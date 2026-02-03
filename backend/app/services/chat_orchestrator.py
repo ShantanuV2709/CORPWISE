@@ -418,6 +418,8 @@ def normalize(scores):
     if not scores:
         return []
     m = max(scores)
+    if m == 0:
+        return [0 for _ in scores]
     return [s / m for s in scores]
 
 
