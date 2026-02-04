@@ -343,10 +343,10 @@ graph LR
     end
     
     subgraph "Backend Routes"
-        I[/chat]
-        J[/admin/documents/upload]
-        K[/admin/documents]
-        L[/feedback]
+        I[chat]
+        J[admin/documents/upload]
+        K[admin/documents]
+        L[feedback]
     end
     
     subgraph "Services"
@@ -647,21 +647,4 @@ sequenceDiagram
 
 ---
 
-## Summary
 
-This visual workflow documentation showcases:
-
-✅ **Complete system architecture** with all components  
-✅ **Detailed sequence diagrams** for user and admin flows  
-✅ **RAG pipeline visualization** showing AI processing  
-✅ **Data model relationships** in MongoDB and Pinecone  
-✅ **Component interaction maps** for frontend/backend  
-✅ **Real-world examples** with specific queries  
-✅ **Caching strategy** for performance optimization  
-✅ **Technology stack** mindmap  
-✅ **User journey maps** for UX understanding  
-✅ **Deployment architecture** for production  
-✅ **Performance metrics** and timing information  
-✅ **Security flows** with authentication and rate limiting
-
-The CORPWISE project is a sophisticated **RAG-based enterprise chatbot** with robust document management, intelligent caching, and production-ready architecture! 🚀
