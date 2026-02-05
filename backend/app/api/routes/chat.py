@@ -12,6 +12,7 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 # ============================
 class ChatRequest(BaseModel):
     user_id: str
+    conversation_id: str
     question: str = Field(..., min_length=1)
     language: str="en"
 
@@ -24,6 +25,7 @@ class ChatRequest(BaseModel):
 async def chat(request: Request, payload: ChatRequest):
     response = await process_chat(
         user_id=payload.user_id,
+        conversation_id=payload.conversation_id,
         question=payload.question
     )
     return response

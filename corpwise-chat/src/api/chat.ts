@@ -3,6 +3,7 @@ import { ChatResponse } from "../types/chat";
 const API_BASE = "http://localhost:8000";
 
 export async function sendQuery(
+  userId: string,
   conversationId: string,
   query: string
 ): Promise<ChatResponse> {
@@ -10,8 +11,9 @@ export async function sendQuery(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      user_id: conversationId,   // ✅ FIXED
-      question: query            // ✅ FIXED
+      user_id: userId,
+      conversation_id: conversationId,
+      question: query
     })
   });
 
@@ -20,6 +22,12 @@ export async function sendQuery(
     throw new Error(`Chat request failed: ${err}`);
   }
 
+  return res.json();
+}
+
+export async function getHistory(userId: string) {
+  const res = await fetch(`${API_BASE}/conversations/${userId}`);
+  if (!res.ok) throw new Error("Failed to fetch history");
   return res.json();
 }
 

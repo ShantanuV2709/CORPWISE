@@ -36,10 +36,10 @@ async def upload_document(
     Supported formats: .md, .txt
     """
     # Validate file type
-    if not file.filename.endswith(('.md', '.txt')):
+    if not file.filename.lower().endswith(('.md', '.txt', '.pdf')):
         raise HTTPException(
             status_code=400,
-            detail="Only .md and .txt files are supported"
+            detail="Only .md, .txt, and .pdf files are supported"
         )
     
     # Generate unique document ID
@@ -108,12 +108,23 @@ async def delete_document(doc_id: str):
     
     # Delete from Pinecone
     if doc.get("pinecone_ids"):
-        await delete_document_from_index(doc["pinecone_ids"])
+        try:
+            await delete_document_from_index(doc["pinecone_ids"])
+        except Exception as e:
+            print(f"⚠️ Pinecone delete failed: {e}")
+            # Continue to delete from DB even if Pinecone fails
+            
+    # Delete from Internal Documents (Keyword Search)
+    from app.db.mongodb import db
+    await db.internal_documents.delete_many({"doc_id": doc_id})
     
     # Delete file
     file_pattern = f"{doc_id}_*"
     for file_path in UPLOAD_DIR.glob(file_pattern):
-        file_path.unlink()
+        try:
+            file_path.unlink()
+        except Exception:
+            pass
     
     # Delete from MongoDB
     await DocumentModel.delete(doc_id)

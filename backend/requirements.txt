@@ -5,3 +5,7 @@ python-dotenv
 motor
 slowapi
 pinecone
+sentence-transformers
+google-genai
+python-multipart
+pypdf

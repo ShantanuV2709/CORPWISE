@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import DecryptedText from "../components/DecryptedText";
+
 import { AdminAuth } from "../components/AdminAuth";
 import { uploadDocument, listDocuments, deleteDocument, Document } from "../api/admin";
 
@@ -62,31 +64,54 @@ export function AdminPanel() {
     }
 
     return (
-        <div className="admin-panel">
-            <div className="admin-header">
-                <h1>📁 Document Management</h1>
-                <button onClick={() => navigate("/")} className="back-button">
+
+        <div className="admin-container">
+            <header className="admin-header">
+                <div>
+                    <h1 className="brand-title">
+                        <DecryptedText
+                            text="CORPWISE"
+                            animateOn="view"
+                            revealDirection="start"
+                            sequential={true}
+                            speed={100}
+                            className="revealed"
+                            encryptedClassName="encrypted"
+                        />
+                    </h1>
+                    <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Document Management</span>
+                </div>
+                <button onClick={() => navigate("/")} className="btn-primary" style={{ background: "transparent", border: "1px solid var(--border-color)" }}>
                     ← Back to Home
                 </button>
-            </div>
+            </header>
 
             <div className="admin-content">
                 {/* Upload Section */}
-                <section className="upload-section">
-                    <h2>Upload New Document</h2>
-                    <form onSubmit={handleUpload} className="upload-form">
-                        <div className="form-row">
-                            <input
-                                type="file"
-                                accept=".md,.txt"
-                                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                                className="file-input"
-                            />
+                <div className="admin-card">
+                    <h2 style={{ marginBottom: 20 }}>Upload New Document</h2>
+                    <form onSubmit={handleUpload}>
+                        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+
+                            <div className="upload-zone" style={{ flex: 1, padding: 20, textAlign: "left" }} onClick={() => document.getElementById("file-upload")?.click()}>
+                                <input
+                                    id="file-upload"
+                                    type="file"
+                                    accept=".md,.txt,.pdf"
+                                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                                    style={{ display: "none" }}
+                                />
+                                {selectedFile ? (
+                                    <span style={{ color: "var(--text-primary)" }}>📄 {selectedFile.name}</span>
+                                ) : (
+                                    <span>Click to select file (.txt, .md, .pdf)</span>
+                                )}
+                            </div>
 
                             <select
                                 value={docType}
                                 onChange={(e) => setDocType(e.target.value)}
-                                className="doc-type-select"
+                                style={{ padding: 16, borderRadius: 12, border: "1px solid var(--border-color)", background: "var(--bg-card)", color: "white" }}
                             >
                                 <option value="general">General</option>
                                 <option value="hr">HR Policy</option>
@@ -97,60 +122,63 @@ export function AdminPanel() {
                             <button
                                 type="submit"
                                 disabled={!selectedFile || uploading}
-                                className="upload-button"
+                                className="btn-primary"
+                                style={{ height: 54 }}
                             >
-                                {uploading ? "Uploading..." : "Upload"}
+                                {uploading ? "Uploading..." : "Upload Document"}
                             </button>
                         </div>
                     </form>
-                </section>
+                </div>
 
                 {/* Documents Table */}
-                <section className="documents-section">
-                    <h2>Uploaded Documents ({documents.length})</h2>
+                <div className="admin-card">
+                    <h2 style={{ marginBottom: 20 }}>Uploaded Documents ({documents.length})</h2>
 
-                    <table className="documents-table">
-                        <thead>
-                            <tr>
-                                <th>Filename</th>
-                                <th>Type</th>
-                                <th>Status</th>
-                                <th>Chunks</th>
-                                <th>Uploaded</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {documents.map((doc) => (
-                                <tr key={doc._id}>
-                                    <td>{doc.filename}</td>
-                                    <td><span className="doc-type-badge">{doc.doc_type}</span></td>
-                                    <td>
-                                        <span className={`status-badge status-${doc.status}`}>
-                                            {doc.status}
-                                        </span>
-                                    </td>
-                                    <td>{doc.chunk_count}</td>
-                                    <td>{new Date(doc.uploaded_at).toLocaleDateString()}</td>
-                                    <td>
-                                        <button
-                                            onClick={() => handleDelete(doc._id, doc.filename)}
-                                            className="delete-button"
-                                        >
-                                            🗑️ Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-
-                    {documents.length === 0 && (
-                        <div className="empty-state">
-                            <p>No documents uploaded yet. Upload your first document above!</p>
+                    {documents.length === 0 ? (
+                        <div style={{ padding: 40, textAlign: "center", color: "var(--text-secondary)" }}>
+                            No documents found. Upload one to get started.
                         </div>
+                    ) : (
+                        <table className="file-list">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Category</th>
+                                    <th>Status</th>
+                                    <th>Chunks</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {documents.map((doc) => (
+                                    <tr key={doc._id}>
+                                        <td style={{ fontWeight: 500 }}>{doc.filename}</td>
+                                        <td>
+                                            <span className="chip source" style={{ textTransform: "uppercase", fontSize: "0.7rem" }}>
+                                                {doc.doc_type}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span style={{ color: "#4ade80", fontSize: "0.85rem" }}>● {doc.status}</span>
+                                        </td>
+                                        <td style={{ color: "var(--text-secondary)" }}>{doc.chunk_count}</td>
+                                        <td style={{ color: "var(--text-secondary)" }}>{new Date(doc.uploaded_at).toLocaleDateString()}</td>
+                                        <td>
+                                            <button
+                                                onClick={() => handleDelete(doc._id, doc.filename)}
+                                                className="btn-danger"
+                                            >
+                                                Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     )}
-                </section>
+                </div>
             </div>
         </div>
     );

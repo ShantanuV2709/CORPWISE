@@ -90,55 +90,85 @@ def diversify_chunks(chunks, max_per_source=1, max_total=6):
     return diversified
 
 
-def expand_query(original_query: str) -> str:
+def contextualize_query(query: str, history: list) -> str:
     """
-    Use LLM to expand/rewrite the query for better semantic search.
-    Converts natural questions into search-optimized queries.
+    Uses LLM to rewrite the user's question based on history.
+    Example: "What is the timeline?" -> "What is the timeline of Project Phoenix?"
     """
-    expansion_prompt = f"""You are a search query optimizer. Your job is to rewrite user questions into better search queries.
+    if not history:
+        return query
 
-User's question: "{original_query}"
-
-Rewrite this as a search query that would find the most relevant information. Include:
-- Key concepts and synonyms
-- Related terms
-- Alternative phrasings
-
-Output ONLY the expanded search query, nothing else. Keep it under 30 words.
-
-Examples:
-- "Who's the CEO?" → "Chief Executive Officer CEO company leader executive"
-- "What is the future direction?" → "future direction roadmap vision upcoming plans strategy goals objectives"
-- "How does it work?" → "how it works functionality mechanism process operation explanation"
-
-Expanded query:"""
-
-    expanded = generate_gemini_response(expansion_prompt).strip()
+    # Only look at the last few exchanges to keep context focused
+    recent_history = history[-4:]
     
-    # Fallback to original if expansion fails or is too long
-    if len(expanded) > 200 or not expanded:
-        return original_query
-    
-    print(f"🔍 Query Expansion: '{original_query}' → '{expanded}'")
-    return expanded
+    history_text = ""
+    for msg in recent_history:
+        role = "User" if msg["role"] == "user" else "Assistant"
+        # Truncate long messages
+        content = msg["content"][:200] + "..." if len(msg["content"]) > 200 else msg["content"]
+        history_text += f"{role}: {content}\n"
+
+    prompt = f"""You are a helpful assistant.
+Rewrite the last user question to be a standalone search query that includes necessary context from the history.
+If the question is already specific, output it exactly as is.
+If the question refers to "it", "this", "the project", etc., replace them with the specific names from history.
+
+History:
+{history_text}
+Current Question: {query}
+
+Standalone Search Query (Output ONLY the query):"""
+
+    try:
+        rewritten = generate_gemini_response(prompt).strip()
+        # Safety check: if empty or too long, revert to original
+        if not rewritten or len(rewritten) > 300:
+            return query
+        
+        # Remove quotes if the LLM adds them
+        rewritten = rewritten.strip('"').strip("'")
+        print(f"🔄 Rewritten: '{query}' -> '{rewritten}'")
+        return rewritten
+    except Exception as e:
+        print(f"⚠️ Contextualization failed: {e}")
+        return query
+
+
+def normalize_query(query: str) -> str:
+    """
+    Remove company-specific terms that contaminate embeddings.
+    The company name 'CORPWISE' doesn't add semantic value since 
+    users are already talking to CORPWISE's assistant.
+    """
+    import re
+    # Case-insensitive removal of CORPWISE and possessive forms
+    normalized = re.sub(r'\bCORPWISE\'?s?\b', '', query, flags=re.IGNORECASE)
+    # Clean up extra spaces
+    normalized = ' '.join(normalized.split())
+    return normalized.strip()
 
 
 # =====================================================
 # Hybrid Retrieval
 # =====================================================
-async def retrieve_context(query: str, top_k: int = 20):  # Increased to 20 for better coverage
+async def retrieve_context(query: str, top_k: int = 8):  # Reduced from 20 to 8 to reduce noise
     CE_SKIP_TOP_NORM = 0.85
     CE_SKIP_GAP = 0.15
 
-    # 🧠 STEP 1: Expand query for better semantic understanding
-    expanded_query = expand_query(query)
+    # 🧹 STEP 0: Normalize query to remove company name bias
+    normalized_query = normalize_query(query)
+    
+    # 🧠 Query is already contextualized by process_chat
+    expanded_query = normalized_query
 
     semantic_chunks = await semantic_search(expanded_query, top_k)
-    keyword_chunks = await keyword_search(expanded_query, limit=5)  # Also increase keyword
+    keyword_chunks = await keyword_search(expanded_query, limit=3)  # Reduced keyword limit too
 
     all_chunks = semantic_chunks + keyword_chunks
     if not all_chunks:
         return "", [], [], False
+
+
 
     semantic_scores = normalize([c["score"] for c in semantic_chunks])
     keyword_scores = normalize([c["score"] for c in keyword_chunks]) if keyword_chunks else []
@@ -232,9 +262,22 @@ def build_prompt(messages: list[dict], context: str) -> str:
     parts = [
         "SYSTEM: You are CORPWISE, a friendly and professional corporate AI assistant.",
         "SYSTEM: When users greet you or ask how you can help, respond warmly and explain your role.",
-        "SYSTEM: For factual questions, answer using ONLY the provided internal context below.",
-        "SYSTEM: If the context doesn't contain the answer, politely say you don't have that information in your knowledge base.",
-        "SYSTEM: Keep responses concise, clear, and helpful.",
+        "",
+        "SYSTEM: === CRITICAL INSTRUCTION ===",
+        "SYSTEM: You will receive context chunks below. Your job is to:",
+        "SYSTEM: 1. Read the user's question carefully",
+        "SYSTEM: 2. Scan ALL context chunks for information that DIRECTLY answers the question",
+        "SYSTEM: 3. Include ONLY that specific information in your response",
+        "SYSTEM: 4. COMPLETELY IGNORE any sentences, paragraphs, or facts that don't answer the question",
+        "",
+        "SYSTEM: Example:",
+        "SYSTEM: Question: 'Who is the CTO?'",
+        "SYSTEM: Context: 'Sarah Chen is CTO. She oversees tech... [plus 5 paragraphs about DevOps]'",
+        "SYSTEM: CORRECT Response: 'Sarah Chen is the Chief Technology Officer (CTO).'",
+        "SYSTEM: WRONG Response: Including ANY information about DevOps, other teams, or unrelated topics",
+        "",
+        "SYSTEM: If the context doesn't contain the answer, say: 'I don't have that information in my knowledge base.'",
+        "SYSTEM: Keep responses SHORT and PRECISE. One sentence is often enough.",
     ]
 
     if context:
@@ -249,7 +292,8 @@ def build_prompt(messages: list[dict], context: str) -> str:
 # =====================================================
 # Main Orchestrator
 # =====================================================
-async def process_chat(user_id: str, question: str, language: str = "en"):
+async def process_chat(user_id: str, conversation_id: str, question: str, original_language: str = "en"):
+    cached = False  # Initialize default
 
     if not question or not question.strip():
         return {
@@ -259,22 +303,22 @@ async def process_chat(user_id: str, question: str, language: str = "en"):
             "cached": False
         }
 
+    # Detect Intent
+    intent = detect_intent(question)
+    
     # 🌍 Lingo input translation
-    original_language = language
-    translated_question = await translate(question, "en")
+    translated_question = question # await translate(question, "en") if original_language != "en" else question
 
     final_answer = None
     final_confidence = "low"
     cached = False
-
-    intent = detect_intent(translated_question)
 
     # --------------------
     # Conversational Query Detection
     # --------------------
     if is_conversational_query(translated_question):
         # Handle greetings and small talk without retrieval
-        history = await get_recent_messages(user_id)
+        history = await get_recent_messages(conversation_id)
         messages = history + [{"role": "user", "content": translated_question}]
         
         # Simple conversational prompt (no context needed)
@@ -297,7 +341,9 @@ async def process_chat(user_id: str, question: str, language: str = "en"):
     # Cache check (language-agnostic)
     # --------------------
     if intent != "SYSTEM_INFO":
-        cached_response = await get_cached_response(translated_question)
+        # Normalize query for cache to avoid company name bias
+        normalized_cache_query = normalize_query(translated_question)
+        cached_response = await get_cached_response(normalized_cache_query)
         if cached_response:
             return {
                 "reply": await translate(cached_response["answer"], original_language),
@@ -307,15 +353,52 @@ async def process_chat(user_id: str, question: str, language: str = "en"):
             }
 
     try:
-        if intent == "SYSTEM_INFO":
-            final_answer = await get_system_answer()
+        # Fetch history for ALL intents (needed for context construction)
+        history = await get_recent_messages(conversation_id)
+
+        # --------------------
+        # Non-Retrieval Intents
+        # --------------------
+        if intent in ["SYSTEM_INFO", "GREETING", "DATE_TIME", "GENERAL"]:
+            # Basic conversational or system queries - No RAG needed
+            context = f"Current Date/Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            
+            if intent == "SYSTEM_INFO":
+                context += "User is asking about CORPWISE system identity."
+            elif intent == "GREETING":
+                context += "User is greeting you. Be polite and professional."
+            elif intent == "DATE_TIME":
+                context += "User is asking for current date/time."
+                
+            messages = history + [{"role": "user", "content": translated_question}]
+            
+            # Simple prompt for non-RAG
+            prompt = build_prompt(messages, context)
+            
+            # We skip retrieval and force generation
+            raw = generate_gemini_response(prompt)
+            final_answer = raw.strip()
             final_confidence = "high"
             sources = []
+            
+            # Skip the rest (RAG flow) and go to return
+            ce_used = False
+            answer_conf_score = 1.0
 
         else:
-            history = await get_recent_messages(user_id)
-
-            context, sources, chunks, ce_used = await retrieve_context(translated_question)
+            # --------------------
+            # RAG Retrieval Flow
+            # --------------------
+            # --------------------
+            # history already fetched above
+            
+            # 🧠 Rewrite query with context (e.g. "it" -> "Project Phoenix")
+            contextualized_q = contextualize_query(translated_question, history)
+            
+            # STEP 0: Normalize query to remove company name bias
+            # (Moved normalization inside retrieve_context, passing contextualized_q directly)
+            
+            context, sources, chunks, ce_used = await retrieve_context(contextualized_q)
 
             chunks = filter_chunks_by_query(chunks, translated_question)
             chunks = dominant_chunks(chunks)
@@ -333,34 +416,35 @@ async def process_chat(user_id: str, question: str, language: str = "en"):
 
             ce_used = any("ce_score" in c for c in chunks)
 
-            if (
-                ce_used
-                and answer_conf_score >= 0.7
-                and context_is_sufficient(context)
-            ):
-                raw = generate_gemini_response(prompt)
-                final_answer, final_confidence = calibrate_answer(
-                    raw.strip(), context, answer_conf_score
-                )
-                final_answer = strip_disallowed_prefixes(final_answer)
+            # Always try LLM if we have context, unless confidence is extremely low
+            should_generate = context.strip() and answer_conf_score >= 0.4
+            
+            if should_generate:
+                try:
+                    raw = generate_gemini_response(prompt)
+                    final_answer, final_confidence = calibrate_answer(
+                        raw.strip(), context, answer_conf_score
+                    )
+                    final_answer = strip_disallowed_prefixes(final_answer)
+                except Exception as e:
+                    # If LLM fails (e.g. Rate Limit 429), fall back gracefully
+                    if "429" in str(e) or "ResourceExhausted" in str(e):
+                        final_answer = "⚠️ System is busy (Rate Limit). Please try again in a minute."
+                        final_confidence = "low" 
+                        # Do NOT dump raw context here, it confuses users.
+                    else:
+                        logger.error(f"LLM Generation failed: {e}")
+                        final_answer = "I found some info but couldn't process it. Please check the sources."
+                        final_confidence = "low"
 
             else:
                 final_confidence = confidence
                 if confidence == "low":
                     final_answer = REFUSAL_MESSAGE
                     sources = []
-                elif context.strip():
-                    clean = dedupe_sentences(strip_markdown_headers(context))
-                    draft = " ".join(clean.split(".")[:3]) + "."
-                    if intent == "EXPLANATION" and answer_conf_score >= 0.6:
-                        rewritten = generate_gemini_response(
-                            SAFE_REWRITE_PROMPT.format(context=context, draft=draft)
-                        )
-                        final_answer = strip_disallowed_prefixes(rewritten.strip())
-                    else:
-                        final_answer = draft
                 else:
-                    final_answer = REFUSAL_MESSAGE
+                     # Fallback for when context exists but score < 0.4 (very rare with top_k=8)
+                     final_answer = "I found relevant documents but they might not fully answer your question. Please verify the sources below."
 
             if final_confidence != "high":
                 await log_negative_retrieval(
@@ -394,8 +478,16 @@ async def process_chat(user_id: str, question: str, language: str = "en"):
     }
 
     await db.conversations.update_one(
-        {"user_id": user_id},
+        {"conversation_id": conversation_id},
         {
+            "$set": {
+                "user_id": user_id,
+                "updated_at": datetime.utcnow()
+            },
+            "$setOnInsert": {
+                "created_at": datetime.utcnow(),
+                "title": question[:50] + "..." if len(question) > 50 else question
+            },
             "$push": {
                 "messages": {
                     "$each": [

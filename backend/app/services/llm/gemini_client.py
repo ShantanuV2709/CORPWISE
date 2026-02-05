@@ -48,4 +48,4 @@ def generate_gemini_response(prompt: str) -> str:
         model=MODEL_NAME,
         contents=prompt
     )
-    return response.text
+    return response.text if response.text else ""

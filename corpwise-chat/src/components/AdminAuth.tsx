@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import DecryptedText from "./DecryptedText";
+
 
 interface AdminAuthProps {
     onAuthenticated: () => void;
@@ -24,31 +26,67 @@ export function AdminAuth({ onAuthenticated }: AdminAuthProps) {
     };
 
     return (
-        <div className="admin-auth-page">
-            <div className="admin-auth-container">
-                <h1>🔐 Admin Access</h1>
-                <p>Enter admin password to continue</p>
+        <div className="role-selection-container">
 
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
+            <div className="role-card" style={{ maxWidth: 400, textAlign: "center" }}>
+                <div style={{ fontSize: "3rem", marginBottom: 20 }}>🔐</div>
+
+                <h1 style={{ fontSize: "1.5rem", marginBottom: 8, fontWeight: 700 }}>
+                    <DecryptedText
+                        text="Admin Access"
+                        animateOn="view"
+                        revealDirection="center"
+                        speed={70}
+                        className="revealed"
+                        encryptedClassName="encrypted"
+                    />
+                </h1>
+                <p style={{ color: "var(--text-secondary)", marginBottom: 30, fontSize: "0.9rem" }}>
+                    Enter credentials to access the secure portal
+                </p>
+
+                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    <div className="input-wrapper" style={{ margin: 0, padding: 4 }}>
                         <input
                             type="password"
-                            placeholder="Enter password"
+                            placeholder="Enter admin password..."
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="auth-input"
+                            className="chat-input"
+                            style={{ textAlign: "center", fontSize: "1.1rem" }}
                             autoFocus
                         />
                     </div>
 
-                    {error && <div className="error-message">{error}</div>}
+                    {error && (
+                        <div style={{
+                            color: "#ef4444",
+                            fontSize: "0.85rem",
+                            padding: "8px",
+                            background: "rgba(239, 68, 68, 0.1)",
+                            borderRadius: 6
+                        }}>
+                            {error}
+                        </div>
+                    )}
 
-                    <button type="submit" className="auth-button">
-                        Login
+                    <button
+                        type="submit"
+                        className="send-btn"
+                        style={{
+                            width: "100%",
+                            padding: "14px",
+                            fontSize: "1rem",
+                            marginTop: 8
+                        }}
+                    >
+                        Access Portal
                     </button>
                 </form>
 
-                <p className="hint">Hint: Default password is "admin123"</p>
+                <div style={{ marginTop: 24, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                    Hint: Default password is <code style={{ color: "var(--accent-color)", background: "transparent", border: "none" }}>admin123</code>
+                </div>
             </div>
         </div>
     );

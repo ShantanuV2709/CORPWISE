@@ -8,33 +8,11 @@ def compress_chunk(text: str) -> str:
     Keeps only the most informative sentences.
     """
 
-    # Split into sentences
-    sentences = re.split(r'(?<=[.!?])\s+', text)
-
-    if len(sentences) <= MAX_SENTENCES:
+    # If text is short, return as is
+    if len(text.split()) < 150:
         return text.strip()
-
-    # Heuristic scoring
-    scored = []
-    for s in sentences:
-        score = 0
-        s_lower = s.lower()
-
-        if any(k in s_lower for k in [
-            "uses", "is used", "combines", "applies",
-            "retrieval", "semantic", "keyword",
-            "cross-encoder", "normalized", "weighted",
-            "stored", "managed", "lifecycle"
-        ]):
-            score += 2
-
-        if len(s.split()) > 12:
-            score += 1
-
-        scored.append((score, s))
-
-    # Select top sentences
-    scored.sort(reverse=True, key=lambda x: x[0])
-    selected = [s for _, s in scored[:MAX_SENTENCES]]
-
-    return " ".join(selected).strip()
+    
+    # ⚠️ DISABLED heuristics for now.
+    # The previous logic was aggressively removing list items (like steps 2, 3, 4).
+    # For RAG, it's better to return the full 400-token chunk than to slice it incorrectly.
+    return text.strip()
