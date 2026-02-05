@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI):
 # =====================================================
 app = FastAPI(
     title="CORPWISE AI Platform",
+    description="An intelligent corporate knowledge assistant powered by RAG (Retrieval Augmented Generation). Upload documents, ask questions in natural language, and get accurate answers with source citations.",
     lifespan=lifespan
 )
 
