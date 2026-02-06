@@ -628,7 +628,7 @@ sequenceDiagram
     
     User->>Frontend: Send Request
     Frontend->>CORS: Preflight Check
-    CORS->>CORS: Validate Origin
+    CORS->>CORS: Validate Origin & X-Company-ID
     
     CORS->>RateLimit: Forward Request
     RateLimit->>RateLimit: Check IP Limits (5/min)
@@ -648,3 +648,106 @@ sequenceDiagram
 ---
 
 
+
+---
+
+## 🏢 Multi-Tenant Data Isolation
+
+```mermaid
+graph TD
+    subgraph "Tenant A: SilaiBook"
+        A1[User: SilaiBook Admin]
+        A2[User: SilaiBook Employee]
+    end
+
+    subgraph "Tenant B: Corpwise"
+        B1[User: Corpwise Admin]
+        B2[User: Corpwise Employee]
+    end
+
+    subgraph "API Layer"
+        C{Request Handler}
+        C -->|Header: X-Company-ID=silaibook| D[Context: SilaiBook]
+        C -->|Header: X-Company-ID=corpwise| E[Context: Corpwise]
+    end
+
+    subgraph "Retrieval Engine"
+        F[Vector Search]
+        G[Keyword Search]
+    end
+
+    subgraph "Data Layer"
+        H[(Pinecone NS: silaibook)]
+        I[(Pinecone NS: corpwise)]
+        J[(MongoDB: {company_id: silaibook})]
+        K[(MongoDB: {company_id: corpwise})]
+    end
+
+    A1 -->|Upload Doc| C
+    A2 -->|Chat Query| C
+    B1 -->|Upload Doc| C
+    B2 -->|Chat Query| C
+
+    D --> F
+    D --> G
+    E --> F
+    E --> G
+
+    F -->|Query Namespace| H
+    F --x|Isoation| I
+    
+    G -->|Filter Metadata| J
+    G --x|Isolation| K
+
+    style H fill:#4CAF50
+    style J fill:#4CAF50
+    style I fill:#FF9800
+    style K fill:#FF9800
+```
+
+---
+
+## 🌗 Dual-Mode Frontend Architecture
+
+```mermaid
+graph TD
+    subgraph "Core Logic (Shared)"
+        A[useChat Hook]
+        B[API Client (chat.ts)]
+        C[Global State (User/Auth)]
+    end
+
+    subgraph "Mode 1: Fullscreen Dashboard"
+        D[DashboardLayout]
+        E[Sidebar]
+        F[AdminPanel]
+        G[Large Chat Window]
+    end
+
+    subgraph "Mode 2: Embeddable Widget"
+        H[ChatWidget]
+        I[Floating Button]
+        J[Popover Window]
+    end
+
+    subgraph "Host Application"
+        K[SilaiBook / External App]
+    end
+
+    D --> A
+    H --> A
+    A --> B
+
+    D --> E
+    D --> F
+    D --> G
+
+    K --> H
+    H --> I
+    H --> J
+
+    style A fill:#FF9800
+    style D fill:#2196F3
+    style H fill:#9C27B0
+    style K fill:#607D8B
+```

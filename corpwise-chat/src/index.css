@@ -1,3 +1,5 @@
+@import './components/ChatWidget.css';
+
 :root {
   /* Dark Theme Palette (Zinc/Slate) */
   --bg-primary: #09090b;
@@ -18,7 +20,12 @@
 
   --border-color: #27272a;
   /* Dark border */
+  --border-color: #27272a;
+  /* Dark border */
   --border-subtle: #18181b;
+
+  --primary-color: #22c55e;
+  /* Green Brand Color */
 
   --user-msg-bg: #2563eb;
   --user-msg-text: #ffffff;

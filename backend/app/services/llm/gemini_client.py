@@ -13,7 +13,7 @@ if not API_KEY:
 
 client = genai.Client(api_key=API_KEY)
 
-MODEL_NAME = "models/gemini-2.5-flash"
+MODEL_NAME = "models/gemini-2.5-flash-lite"
 
 
 def is_rate_limit_error(exception: Exception) -> bool:
@@ -32,18 +32,28 @@ def is_rate_limit_error(exception: Exception) -> bool:
     return False
 
 
-def should_retry(exception: Exception) -> bool:
-    """
-    Retry only if NOT a rate-limit error.
-    """
-    return not is_rate_limit_error(exception)
+from tenacity import retry, stop_after_attempt, wait_exponential
 
+# ... (imports)
+
+def generate_gemini_response(prompt: str) -> str:
+    """
+    Generates content with robust error handling for Rate Limits.
+    """
+    try:
+        return _generate_with_retry(prompt)
+    except Exception as e:
+        print(f"❌ Gemini Generation Failed: {e}")
+        return ""
 
 @retry(
-    retry=retry_if_exception(should_retry),
-    stop=stop_after_attempt(2),  # keep retries minimal
+    wait=wait_exponential(multiplier=2, min=5, max=60), # Wait 5s, 10s, 20s, 40s...
+    stop=stop_after_attempt(5), # Try 5 times (enough to cover the ~18s delay)
+    reraise=True 
 )
-def generate_gemini_response(prompt: str) -> str:
+def _generate_with_retry(prompt: str) -> str:
+    # Print a small debug dot to show activity in logs without spamming
+    print(".", end="", flush=True)
     response = client.models.generate_content(
         model=MODEL_NAME,
         contents=prompt

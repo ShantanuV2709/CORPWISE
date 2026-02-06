@@ -5,7 +5,7 @@ Endpoints for document management.
 import os
 import uuid
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from pydantic import BaseModel
 
 from app.models.document import DocumentModel
@@ -27,6 +27,7 @@ class UploadResponse(BaseModel):
 
 @router.post("/documents/upload", response_model=UploadResponse)
 async def upload_document(
+    request: Request, # Added request to get headers
     file: UploadFile = File(...),
     doc_type: str = "general"
 ):
@@ -35,6 +36,9 @@ async def upload_document(
     
     Supported formats: .md, .txt
     """
+    # Extract Company ID
+    company_id = request.headers.get("X-Company-ID", None)
+
     # Validate file type
     if not file.filename.lower().endswith(('.md', '.txt', '.pdf')):
         raise HTTPException(
@@ -58,7 +62,8 @@ async def upload_document(
         await DocumentModel.create(
             doc_id=doc_id,
             filename=file.filename,
-            doc_type=doc_type
+            doc_type=doc_type,
+            # store company_id in metadata logic if needed (DocumentModel mainly just status)
         )
         
         # Process and index
@@ -66,7 +71,8 @@ async def upload_document(
             file_path=str(file_path),
             doc_id=doc_id,
             doc_type=doc_type,
-            filename=file.filename
+            filename=file.filename,
+            company_id=company_id # Pass namespace
         )
         
         # Update document status
@@ -98,8 +104,10 @@ async def list_documents():
 
 
 @router.delete("/documents/{doc_id}")
-async def delete_document(doc_id: str):
+async def delete_document(doc_id: str, request: Request):
     """Delete a document and remove from Pinecone."""
+    company_id = request.headers.get("X-Company-ID", None)
+
     # Get document
     doc = await DocumentModel.get_by_id(doc_id)
     
@@ -109,7 +117,7 @@ async def delete_document(doc_id: str):
     # Delete from Pinecone
     if doc.get("pinecone_ids"):
         try:
-            await delete_document_from_index(doc["pinecone_ids"])
+            await delete_document_from_index(doc["pinecone_ids"], company_id=company_id)
         except Exception as e:
             print(f"⚠️ Pinecone delete failed: {e}")
             # Continue to delete from DB even if Pinecone fails

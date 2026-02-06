@@ -35,6 +35,16 @@ Ask questions, get answers instantly—just like asking a colleague.
 - Query Expansion: Automatically expands user queries to include synonyms and related terms
 - Caching: Embeddings and successful Q&A pairs are cached for instant retrieval
 
+### Embeddable Widget
+- Drop-in Integration: lightweight chat widget (`<ChatWidget />`) that works on any React site
+- Dual-Mode Architecture: Run purely as a widget or as a full admin dashboard
+- Responsive Design: "Glassmorphism" UI that adapts to any brand aesthetic
+
+### Multi-Tenant Architecture
+- Data Isolation: Strict separation of documents via `Company ID`
+- Dynamic Branding: The AI adapts its persona (Name, Greeting) based on the active Tenant
+- Scalable: Host thousands of companies on a single instance
+
 ---
 
 ## Tech Stack
@@ -105,6 +115,50 @@ npm install
 npm start
 ```
 The application will be accessible at `http://localhost:3000`.
+
+---
+
+## 🚀 Using the Embeddable Widget
+
+CORPWISE is designed to be embedded into other applications (like **SilaiBook**, **Project Phoenix**, or company Intranets).
+
+### 1. Copy the Components
+Copy the following files from `corpwise-chat/src` to your target project:
+- `components/ChatWidget.tsx` (The main floating bubble)
+- `components/MessageBubble.tsx`
+- `components/SystemProcessing.tsx` (Typing indicator)
+- `components/DecryptedText.tsx` (Animation)
+- `hooks/useChat.ts` (State logic)
+- `api/chat.ts` (API connector)
+
+### 2. Install Dependencies
+Your target project needs these standard packages:
+```bash
+npm install framer-motion lucide-react react-markdown remark-gfm
+```
+
+### 3. Add to your App
+Import it in your main layout or root component:
+
+```tsx
+import ChatWidget from "./components/ChatWidget";
+
+export default function App() {
+  return (
+    <div className="App">
+       {/* Your main app content */}
+       <ChatWidget /> 
+    </div>
+  );
+}
+```
+
+### 4. Configure Multi-Tenancy
+To make the widget use a specific company's data, simply set the default `companyId` in `hooks/useChat.ts` or pass it as a prop:
+```typescript
+// in useChat.ts
+const [companyId] = useState("silaibook"); // or load from your app's auth context
+```
 
 ---
 
@@ -184,4 +238,4 @@ Contributions are welcome! Please feel free to submit a Pull Request to help imp
 
 ## Contact
 
-For questions or support, please open an issue on GitHub or contact the development team.
+For questions or support, please open an issue on GitHub.

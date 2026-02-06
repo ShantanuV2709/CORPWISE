@@ -23,9 +23,15 @@ class ChatRequest(BaseModel):
 @router.post("")  # ✅ NO trailing slash
 @limiter.limit("5/minute")
 async def chat(request: Request, payload: ChatRequest):
+    # Extract Company ID from headers
+    company_id = request.headers.get("X-Company-ID", None)
+    print(f"📥 API /chat | Headers: {request.headers}")
+    print(f"📥 API /chat | Extracted X-Company-ID: '{company_id}'")
+
     response = await process_chat(
         user_id=payload.user_id,
         conversation_id=payload.conversation_id,
-        question=payload.question
+        question=payload.question,
+        company_id=company_id  # Pass to orchestrator
     )
     return response

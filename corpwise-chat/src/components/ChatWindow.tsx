@@ -1,111 +1,33 @@
-import { useState, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 import DecryptedText from "./DecryptedText";
 import SystemProcessing from "./SystemProcessing";
-
-import { sendQuery, getHistory } from "../api/chat";
-import { Message } from "../types/chat";
 import { MessageBubble } from "./MessageBubble";
-import { v4 as uuidv4 } from "uuid";
-
-interface ConversationSummary {
-  conversation_id: string;
-  title: string;
-  updated_at: string;
-  messages?: Message[];
-}
+import { useChat } from "../hooks/useChat";
 
 export default function ChatWindow() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Persistent User ID for history grouping
-  const [userId] = useState(() => {
-    let stored = localStorage.getItem("app_user_id");
-    if (!stored) {
-      stored = uuidv4();
-      localStorage.setItem("app_user_id", stored);
-    }
-    return stored;
-  });
+  // Uses the shared hook (Brain)
+  const {
+    messages,
+    loading,
+    input,
+    setInput,
+    history,
+    sendMessage,
+    startNewChat,
+    loadConversation,
+    conversationId
+  } = useChat();
 
-  // Current active conversation ID
-  const [conversationId, setConversationId] = useState<string>(() => uuidv4());
+  // Scroll to bottom helper
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-  // History list
-  const [history, setHistory] = useState<ConversationSummary[]>([]);
-
-  // Fetch history on mount
   useEffect(() => {
-    loadHistory();
-  }, [userId]);
-
-  async function loadHistory() {
-    try {
-      const data = await getHistory(userId);
-      // Sort by updated_at desc
-      const sorted = data.sort((a: any, b: any) =>
-        new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()
-      );
-      setHistory(sorted);
-    } catch (err) {
-      console.error("Failed to load history", err);
-    }
-  }
-
-  function startNewChat() {
-    setConversationId(uuidv4()); // New ID
-    setMessages([]); // Clear view
-  }
-
-  function loadConversation(conv: ConversationSummary) {
-    setConversationId(conv.conversation_id);
-    // If backend returns messages in history list (it does based on our check)
-    if (conv.messages) {
-      setMessages(conv.messages);
-    } else {
-      setMessages([]); // Or fetch messages for this conv if not provided
-    }
-  }
-
-  async function handleSend() {
-    if (!input.trim()) return;
-
-    const userMessage: Message = {
-      role: "user",
-      content: input
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInput("");
-    setLoading(true);
-
-    try {
-      const response = await sendQuery(userId, conversationId, input);
-
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: response.reply,
-        meta: response
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-
-      // Refresh history list to show new title/update time
-      loadHistory();
-
-    } catch (err) {
-      setMessages(prev => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Failed to get response from server."
-        }
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  }
+    scrollToBottom();
+  }, [messages, loading]);
 
   return (
     <div className="app-container">
@@ -179,6 +101,7 @@ export default function ChatWindow() {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
         <div className="input-area">
           <div className="input-wrapper">
@@ -186,10 +109,11 @@ export default function ChatWindow() {
               className="chat-input"
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSend()}
+              onKeyDown={e => e.key === "Enter" && sendMessage(input)}
               placeholder="Ask a question about Corpwise..."
+              autoFocus
             />
-            <button className="send-btn" onClick={handleSend} disabled={loading || !input.trim()}>
+            <button className="send-btn" onClick={() => sendMessage(input)} disabled={loading || !input.trim()}>
               Send
             </button>
           </div>

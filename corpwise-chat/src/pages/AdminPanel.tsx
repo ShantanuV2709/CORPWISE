@@ -7,6 +7,7 @@ import { uploadDocument, listDocuments, deleteDocument, Document } from "../api/
 
 export function AdminPanel() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [companyId, setCompanyId] = useState(""); // Store logged-in company
     const [documents, setDocuments] = useState<Document[]>([]);
     const [uploading, setUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -35,11 +36,12 @@ export function AdminPanel() {
 
         setUploading(true);
         try {
-            await uploadDocument(selectedFile, docType);
+            // Pass companyId to API
+            await uploadDocument(selectedFile, docType, companyId);
             setSelectedFile(null);
             setDocType("general");
             await loadDocuments();
-            alert("Document uploaded successfully!");
+            alert(`Document uploaded successfully for ${companyId}!`);
         } catch (error) {
             alert("Upload failed: " + error);
         } finally {
@@ -51,7 +53,7 @@ export function AdminPanel() {
         if (!window.confirm(`Delete "${filename}"?`)) return;
 
         try {
-            await deleteDocument(docId);
+            await deleteDocument(docId, companyId);
             await loadDocuments();
             alert("Document deleted successfully!");
         } catch (error) {
@@ -60,7 +62,10 @@ export function AdminPanel() {
     };
 
     if (!isAuthenticated) {
-        return <AdminAuth onAuthenticated={() => setIsAuthenticated(true)} />;
+        return <AdminAuth onAuthenticated={(id) => {
+            setCompanyId(id);
+            setIsAuthenticated(true);
+        }} />;
     }
 
     return (

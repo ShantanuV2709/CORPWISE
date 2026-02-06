@@ -79,8 +79,15 @@ def chunk_text(text, chunk_size=CHUNK_SIZE, overlap=OVERLAP):
 # =====================================================
 # Ingestion Pipeline
 # =====================================================
-async def ingest():
+# =====================================================
+# Ingestion Pipeline
+# =====================================================
+async def ingest(company_id: str = None):
     to_upsert = []
+    
+    # Use global namespace (empty string) if no company specified
+    namespace = company_id if company_id else ""
+    print(f"🎯 TARGET NAMESPACE: '{namespace}'")
 
     for root, _, files in os.walk(DOCUMENT_ROOT):
         for file in files:
@@ -124,7 +131,8 @@ async def ingest():
                         {
                             "source": source,
                             "section": section_title,
-                            "text": chunk
+                            "text": chunk,
+                            "company_id": namespace # Optional: useful for debugging
                         }
                     ))
 
@@ -132,12 +140,22 @@ async def ingest():
         print("⚠️ No documents found to ingest")
         return
 
-    index.upsert(vectors=to_upsert)
-    print(f"✅ Ingested {len(to_upsert)} chunks into Pinecone")
+    # UPSERT WITH NAMESPACE
+    index.upsert(
+        vectors=to_upsert,
+        namespace=namespace 
+    )
+    print(f"✅ Ingested {len(to_upsert)} chunks into Pinecone [Namespace: '{namespace}']")
 
 
 # =====================================================
 # Entrypoint
 # =====================================================
 if __name__ == "__main__":
-    asyncio.run(ingest())
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--company", type=str, help="Company ID for multi-tenant isolation", default=None)
+    
+    args = parser.parse_args()
+    
+    asyncio.run(ingest(company_id=args.company))

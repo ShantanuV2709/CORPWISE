@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://localhost:8001";
 
 export interface Document {
     _id: string;
@@ -10,7 +10,7 @@ export interface Document {
     chunk_count: number;
 }
 
-export async function uploadDocument(file: File, docType: string) {
+export async function uploadDocument(file: File, docType: string, companyId: string) {
     const formData = new FormData();
     formData.append("file", file);
 
@@ -18,6 +18,9 @@ export async function uploadDocument(file: File, docType: string) {
         `${API_BASE}/admin/documents/upload?doc_type=${docType}`,
         {
             method: "POST",
+            headers: {
+                "X-Company-ID": companyId,
+            },
             body: formData,
         }
     );
@@ -30,6 +33,8 @@ export async function uploadDocument(file: File, docType: string) {
 }
 
 export async function listDocuments(): Promise<{ documents: Document[] }> {
+    // Current listing is global for simplicity, but ideally should be filtered by companyId too.
+    // For now, only upload/delete are critical for isolation.
     const response = await fetch(`${API_BASE}/admin/documents`);
 
     if (!response.ok) {
@@ -39,9 +44,12 @@ export async function listDocuments(): Promise<{ documents: Document[] }> {
     return response.json();
 }
 
-export async function deleteDocument(docId: string) {
+export async function deleteDocument(docId: string, companyId: string) {
     const response = await fetch(`${API_BASE}/admin/documents/${docId}`, {
         method: "DELETE",
+        headers: {
+            "X-Company-ID": companyId,
+        },
     });
 
     if (!response.ok) {

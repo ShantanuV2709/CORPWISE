@@ -88,7 +88,8 @@ async def process_and_index_document(
     file_path: str,
     doc_id: str,
     doc_type: str,
-    filename: str
+    filename: str,
+    company_id: str = None  # Added company_id
 ) -> Dict:
     """
     Process a document file and index it to Pinecone.
@@ -98,10 +99,12 @@ async def process_and_index_document(
         doc_id: Unique document ID
         doc_type: Document category (e.g., 'hr', 'it', 'policy')
         filename: Original filename
+        company_id: Optional company/tenant ID for namespace isolation
         
     Returns:
         Dict with processing results
     """
+    # ... (File reading logic omitted for brevity as it is unchanged) ...
     # Read file content
     content = ""
     if filename.lower().endswith(".pdf"):
@@ -140,6 +143,9 @@ async def process_and_index_document(
     index = get_index()
     pinecone_ids = []
     total_chunks = 0
+    
+    # Target namespace: default to "" if None
+    namespace = company_id if company_id else ""
 
     for section_title, section_body in sections:
         chunks = chunk_text(section_body)
@@ -159,13 +165,14 @@ async def process_and_index_document(
                 "section": section_title,
                 "doc_id": doc_id,
                 "doc_type": doc_type,
-                "chunk_index": i
+                "chunk_index": i,
+                "company_id": namespace # Optional logging
             }
             
             # Upsert to Pinecone
             index.upsert(
                 vectors=[(chunk_id, embedding, metadata)],
-                namespace=""
+                namespace=namespace
             )
 
             # Insert into MongoDB for Keyword Search (Hybrid RAG)
@@ -176,6 +183,7 @@ async def process_and_index_document(
                 "source": metadata["source"],
                 "section": section_title,
                 "doc_type": doc_type,
+                "company_id": namespace, # Store in Mongo too
                 "created_at": datetime.utcnow()
             })
             
@@ -188,10 +196,12 @@ async def process_and_index_document(
     }
 
 
-async def delete_document_from_index(pinecone_ids: List[str]):
+async def delete_document_from_index(pinecone_ids: List[str], company_id: str = None):
     """Remove document chunks from Pinecone."""
     if not pinecone_ids:
         return
     
+    namespace = company_id if company_id else ""
+    
     index = get_index()
-    index.delete(ids=pinecone_ids, namespace="")
+    index.delete(ids=pinecone_ids, namespace=namespace)

@@ -3,7 +3,7 @@ import DecryptedText from "./DecryptedText";
 
 
 interface AdminAuthProps {
-    onAuthenticated: () => void;
+    onAuthenticated: (companyId: string) => void;
 }
 
 export function AdminAuth({ onAuthenticated }: AdminAuthProps) {
@@ -16,8 +16,17 @@ export function AdminAuth({ onAuthenticated }: AdminAuthProps) {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
+        // Extract company ID from the form (using name attribute since we didn't use state for it to keep it simple)
+        const form = e.target as HTMLFormElement;
+        const companyIdInput = form.elements.namedItem("companyId") as HTMLInputElement;
+        const companyId = companyIdInput?.value?.trim().toLowerCase();
+
         if (password === ADMIN_PASSWORD) {
-            onAuthenticated();
+            if (!companyId) {
+                setError("Company ID is required");
+                return;
+            }
+            onAuthenticated(companyId);
             setError("");
         } else {
             setError("Invalid password");
@@ -48,13 +57,23 @@ export function AdminAuth({ onAuthenticated }: AdminAuthProps) {
                 <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     <div className="input-wrapper" style={{ margin: 0, padding: 4 }}>
                         <input
+                            type="text"
+                            placeholder="Company ID (e.g. silaibook)"
+                            className="chat-input"
+                            style={{ textAlign: "center", fontSize: "1.0rem" }}
+                            name="companyId"
+                            required
+                        />
+                    </div>
+
+                    <div className="input-wrapper" style={{ margin: 0, padding: 4 }}>
+                        <input
                             type="password"
                             placeholder="Enter admin password..."
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="chat-input"
                             style={{ textAlign: "center", fontSize: "1.1rem" }}
-                            autoFocus
                         />
                     </div>
 

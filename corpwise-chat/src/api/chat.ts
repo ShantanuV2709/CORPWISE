@@ -1,15 +1,27 @@
 import { ChatResponse } from "../types/chat";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://localhost:8001";
 
 export async function sendQuery(
   userId: string,
   conversationId: string,
-  query: string
+  query: string,
+  companyId?: string // Added optional companyId
 ): Promise<ChatResponse> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  // Fallback: If companyId is not passed, default to "silaibook" during this beta testing phase
+  const targetCompany = companyId || "silaibook";
+
+  console.log(`[API] Sending Query. Company: ${targetCompany}, Query: ${query}`);
+
+  if (targetCompany) {
+    headers["X-Company-ID"] = targetCompany;
+  }
+
   const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: headers,
     body: JSON.stringify({
       user_id: userId,
       conversation_id: conversationId,
