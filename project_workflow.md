@@ -679,8 +679,8 @@ graph TD
     subgraph "Data Layer"
         H[(Pinecone NS: silaibook)]
         I[(Pinecone NS: corpwise)]
-        J[(MongoDB: {company_id: silaibook})]
-        K[(MongoDB: {company_id: corpwise})]
+        J[(MongoDB: company_id: silaibook)]
+        K[(MongoDB: company_id: corpwise)]
     end
 
     A1 -->|Upload Doc| C
@@ -694,7 +694,7 @@ graph TD
     E --> G
 
     F -->|Query Namespace| H
-    F --x|Isoation| I
+    F --x|Isolation| I
     
     G -->|Filter Metadata| J
     G --x|Isolation| K
@@ -713,8 +713,8 @@ graph TD
 graph TD
     subgraph "Core Logic (Shared)"
         A[useChat Hook]
-        B[API Client (chat.ts)]
-        C[Global State (User/Auth)]
+        B["API Client (chat.ts)"]
+        C["Global State (User/Auth)"]
     end
 
     subgraph "Mode 1: Fullscreen Dashboard"
@@ -731,7 +731,7 @@ graph TD
     end
 
     subgraph "Host Application"
-        K[SilaiBook / External App]
+        K["SilaiBook / External App"]
     end
 
     D --> A
