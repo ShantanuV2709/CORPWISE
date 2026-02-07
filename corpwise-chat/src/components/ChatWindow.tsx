@@ -5,6 +5,7 @@ import { MessageBubble } from "./MessageBubble";
 import { useChat } from "../hooks/useChat";
 
 export default function ChatWindow() {
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Uses the shared hook (Brain)
@@ -29,10 +30,24 @@ export default function ChatWindow() {
     scrollToBottom();
   }, [messages, loading]);
 
+  // Close sidebar when selecting a chat on mobile
+  const handleChatSelect = (conv: any) => {
+    loadConversation(conv);
+    setIsSidebarOpen(false);
+  };
+
   return (
     <div className="app-container">
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isSidebarOpen ? "mobile-open" : ""}`}>
         <div className="sidebar-header">
           <div className="brand-title">
             <DecryptedText
@@ -45,10 +60,10 @@ export default function ChatWindow() {
               encryptedClassName="encrypted"
             />
           </div>
-          <div className="status-badge">Online</div>
+          <button className="mobile-close-btn" onClick={() => setIsSidebarOpen(false)}>✕</button>
         </div>
 
-        <button onClick={startNewChat} className="new-chat-btn">
+        <button onClick={() => { startNewChat(); setIsSidebarOpen(false); }} className="new-chat-btn">
           + New Conversation
         </button>
 
@@ -58,7 +73,7 @@ export default function ChatWindow() {
             {history.map(conv => (
               <div
                 key={conv.conversation_id}
-                onClick={() => loadConversation(conv)}
+                onClick={() => handleChatSelect(conv)}
                 className={`history-item ${conv.conversation_id === conversationId ? "active" : ""}`}
               >
                 {conv.title || "New Chat"}
@@ -77,14 +92,33 @@ export default function ChatWindow() {
       {/* Main Chat Area */}
       <main className="chat-interface">
         <header className="chat-header">
-          <span style={{ fontWeight: 600 }}>Internal Knowledge Assistant</span>
-          <div style={{ width: 10, height: 10, background: "#22c55e", borderRadius: "50%" }}></div>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {/* Hamburger Button */}
+            <button
+              className="hamburger-btn"
+              onClick={() => setIsSidebarOpen(true)}
+              aria-label="Open Menu"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <span style={{ fontWeight: 600 }}>Internal Knowledge Assistant</span>
+          </div>
+          <div className="status-badge-desktop">Online</div>
         </header>
 
         <div className="message-list">
           {messages.length === 0 && (
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", color: "var(--text-secondary)" }}>
-              Start a new conversation...
+            <div className="empty-state-message">
+              <DecryptedText
+                text="Start a new conversation..."
+                speed={120}
+                className="revealed"
+                encryptedClassName="encrypted"
+              />
             </div>
           )}
           {messages.map((m, i) => (
@@ -96,7 +130,7 @@ export default function ChatWindow() {
           ))}
           {loading && (
             <div className="message assistant">
-              <div className="message-content" style={{ background: "transparent", border: "none", padding: 0 }}>
+              <div className="message-content glass-loader">
                 <SystemProcessing />
               </div>
             </div>

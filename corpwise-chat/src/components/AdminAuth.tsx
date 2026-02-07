@@ -37,10 +37,10 @@ export function AdminAuth({ onAuthenticated }: AdminAuthProps) {
     return (
         <div className="role-selection-container">
 
-            <div className="role-card" style={{ maxWidth: 400, textAlign: "center" }}>
-                <div style={{ fontSize: "3rem", marginBottom: 20 }}>🔐</div>
+            <div className="admin-auth-card">
+                <div className="admin-lock-icon">🔐</div>
 
-                <h1 style={{ fontSize: "1.5rem", marginBottom: 8, fontWeight: 700 }}>
+                <h1 className="admin-title">
                     <DecryptedText
                         text="Admin Access"
                         animateOn="view"
@@ -50,61 +50,54 @@ export function AdminAuth({ onAuthenticated }: AdminAuthProps) {
                         encryptedClassName="encrypted"
                     />
                 </h1>
-                <p style={{ color: "var(--text-secondary)", marginBottom: 30, fontSize: "0.9rem" }}>
+                <p className="admin-subtitle">
                     Enter credentials to access the secure portal
                 </p>
 
-                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                    <div className="input-wrapper" style={{ margin: 0, padding: 4 }}>
+                <form onSubmit={handleSubmit} className="admin-form">
+                    <div className="admin-input-wrapper">
                         <input
                             type="text"
                             placeholder="Company ID (e.g. silaibook)"
-                            className="chat-input"
-                            style={{ textAlign: "center", fontSize: "1.0rem" }}
+                            className="admin-input"
                             name="companyId"
                             required
+                            autoComplete="off"
                         />
                     </div>
 
-                    <div className="input-wrapper" style={{ margin: 0, padding: 4 }}>
+                    <div className="admin-input-wrapper">
                         <input
                             type="password"
                             placeholder="Enter admin password..."
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="chat-input"
-                            style={{ textAlign: "center", fontSize: "1.1rem" }}
+                            className="admin-input"
+                            autoComplete="current-password"
                         />
                     </div>
 
                     {error && (
                         <div style={{
-                            color: "#ef4444",
+                            color: "#f87171",
                             fontSize: "0.85rem",
-                            padding: "8px",
-                            background: "rgba(239, 68, 68, 0.1)",
-                            borderRadius: 6
+                            padding: "10px",
+                            background: "rgba(239, 68, 68, 0.15)",
+                            borderRadius: 8,
+                            border: "1px solid rgba(239, 68, 68, 0.2)",
+                            textAlign: "center"
                         }}>
                             {error}
                         </div>
                     )}
 
-                    <button
-                        type="submit"
-                        className="send-btn"
-                        style={{
-                            width: "100%",
-                            padding: "14px",
-                            fontSize: "1rem",
-                            marginTop: 8
-                        }}
-                    >
+                    <button type="submit" className="admin-submit-btn">
                         Access Portal
                     </button>
                 </form>
 
-                <div style={{ marginTop: 24, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                    Hint: Default password is <code style={{ color: "var(--accent-color)", background: "transparent", border: "none" }}>admin123</code>
+                <div className="admin-hint">
+                    Hint: Default password is <code>{ADMIN_PASSWORD}</code>
                 </div>
             </div>
         </div>

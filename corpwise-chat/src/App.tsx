@@ -1,23 +1,48 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { RoleSelection } from "./pages/RoleSelection";
-import { AdminPanel } from "./pages/AdminPanel";
-import ChatWindow from "./components/ChatWindow";
 import ChatWidget from "./components/ChatWidget";
+import SystemProcessing from "./components/SystemProcessing";
+
+// Lazy Load Pages for Performance Optimization
+const RoleSelection = lazy(() => import("./pages/RoleSelection").then(module => ({ default: module.RoleSelection })));
+// Handle default vs named exports carefully. AdminPanel is likely a named export based on previous file reads.
+const AdminPanel = lazy(() => import("./pages/AdminPanel").then(module => ({ default: module.AdminPanel })));
+const ChatWindow = lazy(() => import("./components/ChatWindow"));
+
+// Loading Fallback Component
+const PageLoader = () => (
+  <div style={{
+    height: "100vh",
+    width: "100%",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "var(--bg-primary)"
+  }}>
+    <SystemProcessing />
+  </div>
+);
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<RoleSelection />} />
-        <Route path="/chat" element={<ChatWindow />} />
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+      {/* 
+        Suspense wraps the lazy-loaded components. 
+        It shows the fallback while the code chunks are being downloaded.
+      */}
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<RoleSelection />} />
+          <Route path="/chat" element={<ChatWindow />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Suspense>
 
       {/* 
         Global Widget Demo 
         (This simulates how it would look embedded on SilaiBook)
+        Kept eager-loaded or could be lazy too, but usually widgets need to be ready.
       */}
       <ChatWidget />
     </BrowserRouter>
