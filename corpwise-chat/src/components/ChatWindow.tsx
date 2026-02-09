@@ -37,7 +37,7 @@ export default function ChatWindow() {
   };
 
   return (
-    <div className="app-container">
+    <div className="chat-layout-container" style={{ display: 'flex', height: '100%', width: '100%' }}>
       {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div
@@ -86,6 +86,24 @@ export default function ChatWindow() {
           <a href="/admin" className="admin-link">
             🔒 Admin Portal
           </a>
+          <button
+            onClick={() => {
+              localStorage.removeItem("app_user_id");
+              localStorage.removeItem("app_company_id");
+              window.location.href = "/";
+            }}
+            className="admin-link"
+            style={{
+              marginTop: "10px",
+              background: "rgba(239, 68, 68, 0.1)",
+              color: "#ef4444",
+              border: "1px solid rgba(239, 68, 68, 0.2)",
+              cursor: "pointer",
+              width: "100%"
+            }}
+          >
+            Sign Out
+          </button>
         </div>
       </aside>
 
@@ -105,7 +123,18 @@ export default function ChatWindow() {
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
-            <span style={{ fontWeight: 600 }}>Internal Knowledge Assistant</span>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontWeight: 600 }}>Internal Knowledge Assistant</span>
+              <div style={{ fontSize: "0.75rem", opacity: 0.9, color: "#94a3b8", display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "4px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  👤 <span style={{ color: "#60a5fa", fontWeight: 600 }}>{localStorage.getItem("app_user_id") || "Guest"}</span>
+                </span>
+                <span style={{ color: "rgba(255,255,255,0.3)" }}>•</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  🏢 <span style={{ color: "#34d399", fontWeight: 600 }}>{localStorage.getItem("app_company_id") || "N/A"}</span>
+                </span>
+              </div>
+            </div>
           </div>
           <div className="status-badge-desktop">Online</div>
         </header>

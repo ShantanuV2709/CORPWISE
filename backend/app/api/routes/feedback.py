@@ -35,12 +35,14 @@ async def submit_feedback(payload: FeedbackRequest):
                     # Let's check if we can retrieve it safely, otherwise empty list.
                     sources = [] 
                     confidence = "high" # User validated it!
+                    company_id = conversation.get("company_id") # Get isolated tenant ID
 
                     await store_response(
                         question=question,
                         answer=answer,
                         sources=sources,
-                        confidence=confidence
+                        confidence=confidence,
+                        company_id=company_id
                     )
                     
                     return {"status": "cached", "message": "Response cached via feedback."}

@@ -8,10 +8,20 @@ response_cache = db.response_cache
 # =====================================================
 # Get cached response (ASYNC)
 # =====================================================
-async def get_cached_response(question: str):
+# =====================================================
+# Get cached response (ASYNC)
+# =====================================================
+async def get_cached_response(question: str, company_id: str = None):
     q_hash = sha256_hash(question)
+    
+    # Ensure cache is isolated by company
+    query = {"question_hash": q_hash}
+    if company_id:
+        query["company_id"] = company_id
+    else:
+        query["company_id"] = {"$in": [None, ""]}
 
-    cached = await response_cache.find_one({"question_hash": q_hash})
+    cached = await response_cache.find_one(query)
     if not cached:
         return None
 
@@ -26,7 +36,7 @@ async def get_cached_response(question: str):
 # =====================================================
 # Store response (ASYNC)
 # =====================================================
-async def store_response(question, answer, sources, confidence):
+async def store_response(question, answer, sources, confidence, company_id: str = None):
     if not answer or "temporarily unable" in answer.lower():
         return
 
@@ -36,6 +46,7 @@ async def store_response(question, answer, sources, confidence):
         "answer": answer,
         "sources": sources,
         "confidence": confidence,
+        "company_id": company_id,  # Store tenant ID
         "hit_count": 1,
         "created_at": datetime.utcnow()
     })

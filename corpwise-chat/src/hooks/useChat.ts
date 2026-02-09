@@ -15,8 +15,10 @@ export function useChat() {
     const [loading, setLoading] = useState(false);
     const [input, setInput] = useState("");
 
-    // Default to silaibook for now, or could come from props/context
-    const [companyId, setCompanyId] = useState("silaibook");
+    // Initialize companyId from localStorage or default to silaibook
+    const [companyId, setCompanyId] = useState(() => {
+        return localStorage.getItem("app_company_id") || "silaibook";
+    });
 
     // Persistent User ID
     const [userId] = useState(() => {

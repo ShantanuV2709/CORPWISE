@@ -32,10 +32,12 @@ export async function uploadDocument(file: File, docType: string, companyId: str
     return response.json();
 }
 
-export async function listDocuments(): Promise<{ documents: Document[] }> {
-    // Current listing is global for simplicity, but ideally should be filtered by companyId too.
-    // For now, only upload/delete are critical for isolation.
-    const response = await fetch(`${API_BASE}/admin/documents`);
+export async function listDocuments(companyId: string): Promise<{ documents: Document[] }> {
+    const response = await fetch(`${API_BASE}/admin/documents`, {
+        headers: {
+            "X-Company-ID": companyId,
+        }
+    });
 
     if (!response.ok) {
         throw new Error("Failed to fetch documents");

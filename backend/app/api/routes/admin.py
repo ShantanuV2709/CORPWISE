@@ -63,7 +63,7 @@ async def upload_document(
             doc_id=doc_id,
             filename=file.filename,
             doc_type=doc_type,
-            # store company_id in metadata logic if needed (DocumentModel mainly just status)
+            company_id=company_id # Save namespace
         )
         
         # Process and index
@@ -97,9 +97,15 @@ async def upload_document(
 
 
 @router.get("/documents")
-async def list_documents():
-    """Get all uploaded documents."""
-    documents = await DocumentModel.get_all()
+async def list_documents(request: Request):
+    """Get all uploaded documents, strictly filtered by Company ID."""
+    company_id = request.headers.get("X-Company-ID", None)
+    
+    if not company_id:
+        # STRICT ISOLATION: Do not return any documents if company ID is undefined
+        return {"documents": []}
+        
+    documents = await DocumentModel.get_all(company_id=company_id)
     return {"documents": documents}
 
 
@@ -138,3 +144,43 @@ async def delete_document(doc_id: str, request: Request):
     await DocumentModel.delete(doc_id)
     
     return {"message": f"Document {doc['filename']} deleted successfully"}
+
+
+# ============================
+# Subscription Management
+# ============================
+class UpdateSubscriptionRequest(BaseModel):
+    tier_id: str
+
+@router.put("/subscription")
+async def update_my_subscription(
+    payload: UpdateSubscriptionRequest,
+    request: Request
+):
+    """
+    Update the calling admin's subscription tier.
+    """
+    company_id = request.headers.get("X-Company-ID")
+    if not company_id:
+        raise HTTPException(status_code=400, detail="Missing Company ID header")
+        
+    from app.models.admin import AdminModel
+    from app.models.subscription import SUBSCRIPTION_TIERS
+    
+    if payload.tier_id not in SUBSCRIPTION_TIERS:
+         raise HTTPException(status_code=400, detail="Invalid subscription tier")
+         
+    # Update in DB
+    result = await AdminModel.collection.update_one(
+        {"company_id": company_id},
+        {"$set": {"subscription_tier": payload.tier_id}}
+    )
+    
+    if result.modified_count == 0:
+        # Check if it was already that tier
+        admin = await AdminModel.get_by_company(company_id)
+        if admin and admin.get("subscription_tier") == payload.tier_id:
+            return {"message": "Subscription already up to date", "tier": payload.tier_id}
+        raise HTTPException(status_code=500, detail="Failed to update subscription")
+        
+    return {"message": "Subscription updated successfully", "tier": payload.tier_id}

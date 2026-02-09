@@ -40,6 +40,21 @@ Ask questions, get answers instantly—just like asking a colleague.
 - Dual-Mode Architecture: Run purely as a widget or as a full admin dashboard
 - Responsive Design: "Glassmorphism" UI that adapts to any brand aesthetic
 
+### Premium "Cyber-Glass" Design
+- **Immersive UI:** A persistent, animated background with floating glass elements (`backdrop-filter`) creates a modern, depth-filled experience
+- **Fluid Animations:** Smooth transitions, hover lift effects, and refined message bubbles
+- **Responsive Layout:** Fully optimized for both desktop dashboards and mobile devices
+
+### Subscription Management
+- **Tiered Access:** Built-in support for multiple subscription tiers (Free, Professional, Enterprise)
+- **Feature Gating:** Automatically restricts features (e.g., max documents, analytics) based on the active plan
+- **Self-Service Updates:** Admins can upgrade their organization's tier directly from the portal
+
+### Super Admin Portal (SaaS Ready)
+- **Multi-Tenant Oversight:** specific dashboard for Super Admins to view all registered companies
+- **Usage Analytics:** aggregated statistics on total documents, queries, and active subscriptions
+- **Tenant Control:** Ability to suspend, activate, or delete tenant organizations and their data
+
 ### Multi-Tenant Architecture
 - Data Isolation: Strict separation of documents via `Company ID`
 - Dynamic Branding: The AI adapts its persona (Name, Greeting) based on the active Tenant
@@ -49,10 +64,11 @@ Ask questions, get answers instantly—just like asking a colleague.
 
 ## Tech Stack
 
-- Frontend: React, TypeScript, Vanilla CSS
-- Backend: Python, FastAPI, SlowAPI (Rate Limiting)
-- AI Model: Google Gemini 2.5 Flash
-- Database: MongoDB (Metadata & Chats), Pinecone (Vector Embeddings)
+- Frontend: React 18, TypeScript, Glassmorphism CSS (Custom)
+- Backend: Python 3.9+, FastAPI, SlowAPI
+- Authentication: JWT-based Auth (Employee & Admin scopes)
+- AI Model: Google Gemini 2.5 Flash / Pro
+- Database: MongoDB (Metadata, Users, Chats), Pinecone (Vector Search)
 - Orchestration: LangChain / Custom RAG Pipeline
 
 ---
@@ -217,6 +233,16 @@ CORPWISE uses Retrieval Augmented Generation (RAG) to provide accurate, context-
 
 ### Feedback
 - `POST /feedback` - Submit feedback (thumbs up/down) on answers
+
+### Subscription
+- `GET /subscription/tiers` - List all available subscription plans
+- `PUT /admin/subscription` - Update the current organization's subscription tier
+
+### Super Admin
+- `GET /super/companies` - List all tenants and their tier status
+- `GET /super/statistics` - View platform-wide usage metrics
+- `PUT /super/company/{id}/tier` - Force-update a tenant's tier
+- `DELETE /super/company/{id}` - Hard delete a tenant and all associated data
 
 ### System
 - `GET /health` - Health check endpoint

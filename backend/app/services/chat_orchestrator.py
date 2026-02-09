@@ -44,6 +44,8 @@ async def semantic_search(query: str, company_id: str, top_k: int = 5):
     # CRITICAL: Use namespace for isolation
     # If company_id is None, it defaults to global/'' namespace
     namespace = company_id if company_id else ""
+    
+    print(f"🌲 PINECONE QUERY | Namespace: '{namespace}' | Top_K: {top_k} | Query: '{query}'")
 
     results = index.query(
         vector=query_vector,
@@ -52,6 +54,8 @@ async def semantic_search(query: str, company_id: str, top_k: int = 5):
         namespace=namespace 
     )
 
+    print(f"🌲 PINECONE RESULTS: {len(results.get('matches', []))} matches found.")
+
     chunks = []
     MIN_SEMANTIC_SCORE = 0.75
     MIN_UPLOADED_DOC_SCORE = 0.60  # Lower threshold for uploaded docs
@@ -59,6 +63,8 @@ async def semantic_search(query: str, company_id: str, top_k: int = 5):
     for match in results.get("matches", []):
         meta = match.get("metadata", {})
         score = match.get("score", 0)
+        
+        print(f"   - Match: {meta.get('source', 'Unknown')} | Score: {score:.4f} | DocID: {meta.get('doc_id')}")
         
         # Use lower threshold for uploaded documents
         has_doc_id = meta.get("doc_id")
@@ -226,18 +232,12 @@ def build_prompt(messages: list[dict], context: str, company_id: str = None) -> 
         "SYSTEM: === CRITICAL INSTRUCTION ===",
         "SYSTEM: You will receive context chunks below. Your job is to:",
         "SYSTEM: 1. Read the user's question carefully",
-        "SYSTEM: 2. Scan ALL context chunks for information that DIRECTLY answers the question",
-        "SYSTEM: 3. Include ONLY that specific information in your response",
-        "SYSTEM: 4. COMPLETELY IGNORE any sentences, paragraphs, or facts that don't answer the question",
-        "",
-        "SYSTEM: Example:",
-        "SYSTEM: Question: 'Who is the CTO?'",
-        "SYSTEM: Context: 'Sarah Chen is CTO. She oversees tech... [plus 5 paragraphs about DevOps]'",
-        "SYSTEM: CORRECT Response: 'Sarah Chen is the Chief Technology Officer (CTO).'",
-        "SYSTEM: WRONG Response: Including ANY information about DevOps, other teams, or unrelated topics",
+        "SYSTEM: 2. Scan ALL context chunks for information that answers the question",
+        "SYSTEM: 3. Synthesize the answer from the provided context",
+        "SYSTEM: 4. If the context is relevant but partial, do your best to answer based ONLY on the context",
         "",
         "SYSTEM: If the context doesn't contain the answer, say: 'I don't have that information in my knowledge base.'",
-        "SYSTEM: Keep responses SHORT and PRECISE. One sentence is often enough.",
+        "SYSTEM: Keep responses concise and professional.",
     ]
 
     if context:
@@ -294,6 +294,11 @@ async def process_chat(user_id: str, conversation_id: str, question: str, compan
 
     # Detect Intent
     intent = detect_intent(question)
+    print(f"🧠 DETECTED INTENT: {intent} | Company: {company_id}")
+
+    # FORCE LOWERCASE COMPANY ID for consistency
+    if company_id:
+        company_id = company_id.lower()
     
     # 🌍 Lingo input translation
     translated_question = question # await translate(question, "en") if original_language != "en" else question
@@ -332,7 +337,7 @@ async def process_chat(user_id: str, conversation_id: str, question: str, compan
     if intent != "SYSTEM_INFO":
         # Normalize query for cache to avoid company name bias
         normalized_cache_query = normalize_query(translated_question)
-        cached_response = await get_cached_response(normalized_cache_query)
+        cached_response = await get_cached_response(normalized_cache_query, company_id=company_id)
         if cached_response:
             return {
                 "reply": await translate(cached_response["answer"], original_language),
@@ -344,6 +349,113 @@ async def process_chat(user_id: str, conversation_id: str, question: str, compan
     try:
         # Fetch history for ALL intents (needed for context construction)
         history = await get_recent_messages(conversation_id)
+
+        # --------------------
+        # Non-Retrieval Intents
+        # --------------------
+        # REMOVED "GENERAL" from here to ensure broader queries hit the RAG system
+        if intent in ["SYSTEM_INFO", "GREETING", "DATE_TIME"]:
+            # Basic conversational or system queries - No RAG needed
+            context = f"Current Date/Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            
+            if intent == "SYSTEM_INFO":
+                context += "User is asking about CORPWISE system identity."
+            elif intent == "GREETING":
+                context += "User is greeting you. Be polite and professional."
+            elif intent == "DATE_TIME":
+                context += "User is asking for current date/time."
+                
+            messages = history + [{"role": "user", "content": translated_question}]
+            
+            # Simple prompt for non-RAG
+            prompt = build_prompt(messages, context, company_id=company_id)
+            
+            # We skip retrieval and force generation
+            raw = generate_gemini_response(prompt)
+            final_answer = raw.strip()
+            final_confidence = "high"
+            sources = []
+            
+            # Skip the rest (RAG flow) and go to return
+            ce_used = False
+            answer_conf_score = 1.0
+
+        else:
+            # --------------------
+            # RAG Retrieval Flow
+            # --------------------
+            # history already fetched above
+            
+            # 🧠 Rewrite query with context (e.g. "it" -> "Project Phoenix")
+            contextualized_q = contextualize_query(translated_question, history)
+            
+            # PASSING COMPANY_ID TO RETRIEVAL
+            context, sources, chunks, ce_used = await retrieve_context(contextualized_q, company_id=company_id)
+
+            # 🛠️ RESTORING LEGACY FILTER LOGIC (As requested by user)
+            # These filters were previously removed but user reported better performance with them.
+            chunks = filter_chunks_by_query(chunks, translated_question)
+            chunks = dominant_chunks(chunks)
+            chunks = restrict_chunks_by_intent(chunks, intent)
+
+            # 🔁 rebuild context + sources after filtering
+            context = "\n\n".join(compress_chunk(c["text"]) for c in chunks)
+            sources = dominant_sources(chunks)
+
+            answer_conf_score = aggregate_answer_confidence(chunks)
+            confidence = confidence_label(answer_conf_score)
+
+            messages = history + [{"role": "user", "content": translated_question}]
+            prompt = build_prompt(messages, context, company_id=company_id)
+
+            ce_used = any("ce_score" in c for c in chunks)
+
+            # Always try LLM if we have context, unless confidence is extremely low
+            should_generate = context.strip() and answer_conf_score >= 0.4
+            
+            if should_generate:
+                try:
+                    raw = generate_gemini_response(prompt)
+                    final_answer, final_confidence = calibrate_answer(
+                        raw.strip(), context, answer_conf_score
+                    )
+                    final_answer = strip_disallowed_prefixes(final_answer)
+                except Exception as e:
+                    # If LLM fails (e.g. Rate Limit 429), fall back gracefully
+                    if "429" in str(e) or "ResourceExhausted" in str(e):
+                        final_answer = "⚠️ System is busy (Rate Limit). Please try again in a minute."
+                        final_confidence = "low" 
+                        # Do NOT dump raw context here, it confuses users.
+                    else:
+                        logger.error(f"LLM Generation failed: {e}")
+                        final_answer = "I found some info but couldn't process it. Please check the sources."
+                        final_confidence = "low"
+
+            else:
+                final_confidence = confidence
+                if confidence == "low":
+                    final_answer = REFUSAL_MESSAGE
+                    sources = []
+                else:
+                     # Fallback for when context exists but score < 0.4 (very rare with top_k=8)
+                     final_answer = "I found relevant documents but they might not fully answer your question. Please verify the sources below."
+
+            if final_confidence != "high":
+                await log_negative_retrieval(
+                    question=translated_question,
+                    confidence=final_confidence,
+                    answer_conf_score=answer_conf_score,
+                    ce_used=ce_used,
+                    top_ce_score=chunks[0].get("ce_score") if chunks else None,
+                    sources=sources,
+                )
+
+            # Automatic caching is DISABLED.
+            # Caching is now triggered via the /feedback endpoint upon positive user feedback.
+            # if final_confidence == "high":
+            #     await store_response(translated_question, final_answer, sources, final_confidence, company_id=company_id)
+
+    except Exception:
 
         # --------------------
         # Non-Retrieval Intents
@@ -390,13 +502,24 @@ async def process_chat(user_id: str, conversation_id: str, question: str, compan
             # PASSING COMPANY_ID TO RETRIEVAL
             context, sources, chunks, ce_used = await retrieve_context(contextualized_q, company_id=company_id)
 
-            chunks = filter_chunks_by_query(chunks, translated_question)
-            chunks = dominant_chunks(chunks)
-            chunks = restrict_chunks_by_intent(chunks, intent)
-
-            # 🔁 rebuild context + sources after filtering
-            context = "\n\n".join(compress_chunk(c["text"]) for c in chunks)
-            sources = dominant_sources(chunks)
+            # 🛠️ AGGRESSIVE FILTERING REMOVED
+            # The previous filters (filter_chunks_by_query, restrict_chunks_by_intent) were too strict
+            # and caused "No information found" errors for semantic matches.
+            # We now rely on the vector store score and Cross-Encoder to filter bad chunks.
+            
+            # chunks = filter_chunks_by_query(chunks, translated_question) <--- REMOVED
+            # chunks = restrict_chunks_by_intent(chunks, intent) <--- REMOVED
+            
+            # Still keep dominant source filtering to avoid mixing too many disparate docs
+            # But relax it slightly or rely on re-ranking
+            # chunks = dominant_chunks(chunks) <--- OPTIONAL: Let's trust re-ranker more
+            
+            # 🔁 rebuild context + sources after potential filtering (if any remained)
+            # context = "\n\n".join(compress_chunk(c["text"]) for c in chunks)
+            # sources = dominant_sources(chunks)
+            
+            # Since retrieve_context ALREADY returns the top chunks (compressed), we don't need to re-compress
+            # unless we filtered them. Since we removed filters, we use the original context.
 
             answer_conf_score = aggregate_answer_confidence(chunks)
             confidence = confidence_label(answer_conf_score)
@@ -472,6 +595,7 @@ async def process_chat(user_id: str, conversation_id: str, question: str, compan
         {
             "$set": {
                 "user_id": user_id,
+                "company_id": company_id,  # Persist for feedback/history context
                 "updated_at": datetime.utcnow()
             },
             "$setOnInsert": {

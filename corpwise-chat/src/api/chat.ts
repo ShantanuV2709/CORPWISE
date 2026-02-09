@@ -19,6 +19,11 @@ export async function sendQuery(
     headers["X-Company-ID"] = targetCompany;
   }
 
+  // Multi-User Support: Send User ID in header
+  if (userId) {
+    headers["X-User-ID"] = userId;
+  }
+
   const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: headers,
@@ -38,7 +43,17 @@ export async function sendQuery(
 }
 
 export async function getHistory(userId: string) {
-  const res = await fetch(`${API_BASE}/conversations/${userId}`);
+  // Use header-based auth for history
+  const headers: Record<string, string> = {};
+  if (userId) {
+    headers["X-User-ID"] = userId;
+  }
+
+  const res = await fetch(`${API_BASE}/conversations/history`, {
+    method: "GET",
+    headers: headers
+  });
+
   if (!res.ok) throw new Error("Failed to fetch history");
   return res.json();
 }

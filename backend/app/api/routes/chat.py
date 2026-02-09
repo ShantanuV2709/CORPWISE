@@ -25,11 +25,18 @@ class ChatRequest(BaseModel):
 async def chat(request: Request, payload: ChatRequest):
     # Extract Company ID from headers
     company_id = request.headers.get("X-Company-ID", None)
+    
+    # Extract User ID from headers (Multi-User Support)
+    # Priority: Header -> Payload
+    header_user_id = request.headers.get("X-User-ID")
+    final_user_id = header_user_id if header_user_id else payload.user_id
+
     print(f"📥 API /chat | Headers: {request.headers}")
     print(f"📥 API /chat | Extracted X-Company-ID: '{company_id}'")
+    print(f"👤 API /chat | User ID: '{final_user_id}' (Header: {header_user_id})")
 
     response = await process_chat(
-        user_id=payload.user_id,
+        user_id=final_user_id,
         conversation_id=payload.conversation_id,
         question=payload.question,
         company_id=company_id  # Pass to orchestrator

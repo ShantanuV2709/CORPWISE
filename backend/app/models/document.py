@@ -17,7 +17,8 @@ class DocumentModel:
         doc_id: str,
         filename: str,
         doc_type: str,
-        uploaded_by: str = "system"
+        uploaded_by: str = "system",
+        company_id: Optional[str] = None
     ):
         """Create a new document record."""
         document = {
@@ -25,6 +26,7 @@ class DocumentModel:
             "filename": filename,
             "doc_type": doc_type,
             "uploaded_by": uploaded_by,
+            "company_id": company_id,
             "uploaded_at": datetime.utcnow(),
             "status": "pending",
             "chunk_count": 0,
@@ -56,9 +58,13 @@ class DocumentModel:
         )
     
     @staticmethod
-    async def get_all():
-        """Get all documents."""
-        cursor = DocumentModel.collection.find({})
+    async def get_all(company_id: Optional[str] = None):
+        """Get all documents, optionally filtered by company."""
+        query = {}
+        if company_id:
+            query["company_id"] = company_id
+            
+        cursor = DocumentModel.collection.find(query)
         documents = await cursor.to_list(length=1000)
         return documents
     

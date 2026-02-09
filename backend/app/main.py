@@ -9,6 +9,7 @@ from app.api.routes.chat import router as chat_router
 from app.api.routes.system import router as system_router
 from app.api.routes.users import router as users_router
 from app.api.routes.conversations import router as conversations_router
+from app.api.routes.subscription import router as subscription_router  # NEW
 
 from app.core.rate_limit import limiter
 from app.db.mongodb import db
@@ -53,6 +54,8 @@ app.add_middleware(
 # =====================================================
 from app.api.routes.feedback import router as feedback_router
 from app.api.routes.admin import router as admin_router
+from app.api.routes.auth import router as auth_router
+from app.api.routes.admin_routes import router as super_admin_router
 
 app.include_router(system_router)
 app.include_router(users_router)
@@ -60,6 +63,9 @@ app.include_router(conversations_router)
 app.include_router(chat_router)
 app.include_router(feedback_router)
 app.include_router(admin_router)
+app.include_router(super_admin_router)
+app.include_router(auth_router)
+app.include_router(subscription_router)  # NEW
 
 # =====================================================
 # Rate Limiter
