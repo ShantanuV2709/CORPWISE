@@ -751,3 +751,17 @@ graph TD
     style H fill:#9C27B0
     style K fill:#607D8B
 ```
+
+---
+
+##  IMPORTANT: SaaS Multi-Tenant Updates
+
+**Note:** This document reflects the original architecture. For the latest SaaS multi-tenant features including:
+- Company registration & authentication
+- Subscription tiers (Starter, Professional, Enterprise)
+- Multi-tenant data isolation with Pinecone namespaces
+- Super Admin dashboard
+- Updated API flows with X-Company-ID headers
+
+**Please refer to:** [saas_workflow_updates.md](./saas_workflow_updates.md) and [multi_tenant_architecture.md](./multi_tenant_architecture.md)
+

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { ArrowLeft } from 'lucide-react';
 import { adminSignup } from "../api/auth";
 import { fetchSubscriptionTiers, type SubscriptionTier } from "../api/subscription";
 import { TierCard } from "./TierCard";
@@ -211,8 +212,9 @@ export function CompanyRegistration({ onRegistered, onBack, embedded = false }: 
                 <span
                     onClick={onBack}
                     className="auth-back-link"
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                    ← Back to Role Selection
+                    <ArrowLeft size={16} /> Back to Role Selection
                 </span>
             </div>
         </div>

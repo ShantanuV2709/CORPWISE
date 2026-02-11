@@ -56,6 +56,7 @@ from app.api.routes.feedback import router as feedback_router
 from app.api.routes.admin import router as admin_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.admin_routes import router as super_admin_router
+from app.api.routes.api_keys import router as api_keys_router # NEW
 
 app.include_router(system_router)
 app.include_router(users_router)
@@ -65,7 +66,8 @@ app.include_router(feedback_router)
 app.include_router(admin_router)
 app.include_router(super_admin_router)
 app.include_router(auth_router)
-app.include_router(subscription_router)  # NEW
+app.include_router(subscription_router) 
+app.include_router(api_keys_router) # NEW
 
 # =====================================================
 # Rate Limiter

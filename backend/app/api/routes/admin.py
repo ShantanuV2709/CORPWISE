@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.models.document import DocumentModel
 from app.services.document_processor import process_and_index_document, delete_document_from_index
+from app.core.usage_middleware import check_usage_limits
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -38,6 +39,10 @@ async def upload_document(
     """
     # Extract Company ID
     company_id = request.headers.get("X-Company-ID", None)
+    
+    # Check document upload limit
+    if company_id:
+        await check_usage_limits(request, company_id, action="document")
 
     # Validate file type
     if not file.filename.lower().endswith(('.md', '.txt', '.pdf')):
@@ -46,7 +51,7 @@ async def upload_document(
             detail="Only .md, .txt, and .pdf files are supported"
         )
     
-    # Generate unique document ID
+        #Generate unique document ID
     doc_id = str(uuid.uuid4())
     
     # Save file
@@ -58,6 +63,20 @@ async def upload_document(
             content = await file.read()
             f.write(content)
         
+        # Get company tier to determine dimensions
+        from app.db.mongodb import db
+        from app.models.subscription import get_tier_dimensions
+        
+        company = None
+        dimensions = 384  # Default to starter
+        
+        if company_id:
+            company = await db.admins.find_one({"company_id": company_id.lower()})
+            if company:
+                tier = company.get("subscription_tier", "starter")
+                dimensions = get_tier_dimensions(tier)
+                print(f"🏢 Company '{company_id}' tier: {tier} → using {dimensions}-dim embeddings")
+        
         # Create document record
         await DocumentModel.create(
             doc_id=doc_id,
@@ -66,13 +85,14 @@ async def upload_document(
             company_id=company_id # Save namespace
         )
         
-        # Process and index
+        # Process and index with tier-specific dimensions
         result = await process_and_index_document(
             file_path=str(file_path),
             doc_id=doc_id,
             doc_type=doc_type,
             filename=file.filename,
-            company_id=company_id # Pass namespace
+            company_id=company_id, # Pass namespace
+            dimensions=dimensions    # Pass tier-specific dimensions
         )
         
         # Update document status
@@ -82,6 +102,11 @@ async def upload_document(
             chunk_count=result["chunk_count"],
             pinecone_ids=result["pinecone_ids"]
         )
+        
+        # Increment document count for the company
+        if company_id:
+            from app.models.admin_helpers import AdminSubscriptionHelpers
+            await AdminSubscriptionHelpers.increment_document_count(company_id)
         
         return {
             "doc_id": doc_id,

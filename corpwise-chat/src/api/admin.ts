@@ -60,3 +60,56 @@ export async function deleteDocument(docId: string, companyId: string) {
 
     return response.json();
 }
+
+export interface ApiKey {
+    key_id: string;
+    name: string;
+    prefix: string;
+    created_at: string;
+    last_used: string | null;
+    status: string;
+}
+
+export async function listApiKeys(companyId: string): Promise<{ keys: ApiKey[] }> {
+    const response = await fetch(`${API_BASE}/api-keys`, {
+        headers: {
+            "X-Company-ID": companyId,
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to fetch API keys");
+    }
+
+    return response.json();
+}
+
+export async function generateApiKey(companyId: string, name: string): Promise<{ key: string, key_data: ApiKey }> {
+    const response = await fetch(`${API_BASE}/api-keys/generate?name=${encodeURIComponent(name)}`, {
+        method: "POST",
+        headers: {
+            "X-Company-ID": companyId,
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to generate API key");
+    }
+
+    return response.json();
+}
+
+export async function revokeApiKey(companyId: string, keyId: string) {
+    const response = await fetch(`${API_BASE}/api-keys/${keyId}`, {
+        method: "DELETE",
+        headers: {
+            "X-Company-ID": companyId,
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to revoke API key");
+    }
+
+    return response.json();
+}

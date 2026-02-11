@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ArrowLeft } from 'lucide-react';
 import { login, signup } from "../api/auth";
 
 interface UserAuthProps {
@@ -107,8 +108,9 @@ export function UserAuth({ onAuthenticated, onBack, embedded = false }: UserAuth
                 <span
                     onClick={onBack}
                     className="auth-back-link"
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                    ← Back
+                    <ArrowLeft size={16} /> Back
                 </span>
 
                 <span

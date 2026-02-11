@@ -10,30 +10,36 @@ SUBSCRIPTION_TIERS: Dict[str, Dict[str, Any]] = {
     "starter": {
         "name": "Starter",
         "description": "Perfect for small firms and startups",
+        "vector_dimensions": 384,  # Lightweight, fast embeddings
+        "embedding_model": "all-MiniLM-L6-v2",
         "max_documents": 20,
         "max_queries_per_month": 5000,
         "max_employees": 50,
         "analytics_enabled": False,
         "custom_branding": False,
         "priority_support": False,
-        "price_monthly": 49,
-        "price_display": "$49/month"
+        "price_monthly": 4000,
+        "price_display": "₹4,000/month"
     },
     "professional": {
         "name": "Professional",
         "description": "Ideal for growing mid-size companies",
+        "vector_dimensions": 768,  # Balanced accuracy for technical docs
+        "embedding_model": "BAAI/bge-base-en-v1.5",
         "max_documents": 100,
         "max_queries_per_month": 25000,
         "max_employees": 200,
         "analytics_enabled": True,
         "custom_branding": False,
         "priority_support": True,
-        "price_monthly": 149,
-        "price_display": "$149/month"
+        "price_monthly": 12000,
+        "price_display": "₹12,000/month"
     },
     "enterprise": {
         "name": "Enterprise",
         "description": "Complete solution for large organizations",
+        "vector_dimensions": 1024,  # Maximum quality for specialized content
+        "embedding_model": "BAAI/bge-large-en-v1.5",
         "max_documents": -1,  # Unlimited
         "max_queries_per_month": -1,  # Unlimited
         "max_employees": -1,  # Unlimited
@@ -92,3 +98,15 @@ def check_query_limit(tier_id: str, current_count: int) -> bool:
 def get_tier_display_name(tier_id: str) -> str:
     """Get display name for a tier."""
     return SUBSCRIPTION_TIERS.get(tier_id, {}).get("name", "Unknown")
+
+
+def get_tier_dimensions(tier_id: str) -> int:
+    """Get vector dimensions for a subscription tier."""
+    tier = get_tier_features(tier_id)
+    return tier.get("vector_dimensions", 384)  # Default to starter
+
+
+def get_tier_model(tier_id: str) -> str:
+    """Get embedding model name for a subscription tier."""
+    tier = get_tier_features(tier_id)
+    return tier.get("embedding_model", "all-MiniLM-L6-v2")  # Default to starter

@@ -1,11 +1,13 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { Target, Lock } from "lucide-react";
 import DecryptedText from "../components/DecryptedText";
 import BlurText from "../components/BlurText";
 import { UserAuth } from "../components/UserAuth";
 import { AdminAuth } from "../components/AdminAuth";
 import { CompanyRegistration } from "../components/CompanyRegistration";
 import { SuperAdminDashboard } from "../components/SuperAdminDashboard";
+import LightRays from "../components/LightRays";
 
 export function RoleSelection() {
     const navigate = useNavigate();
@@ -14,6 +16,16 @@ export function RoleSelection() {
     const [showRegister, setShowRegister] = React.useState(false);
     const [superAdminToken, setSuperAdminToken] = React.useState<string | null>(null); // Super Admin state
     const [registrationSuccess, setRegistrationSuccess] = React.useState(false); // Registration success flag
+
+    const [isLoaded, setIsLoaded] = React.useState(false);
+
+    React.useEffect(() => {
+        // Reduced delay to 800ms for a snappier "flow"
+        const timer = setTimeout(() => {
+            setIsLoaded(true);
+        }, 800);
+        return () => clearTimeout(timer);
+    }, []);
 
     const handleAuthenticated = (username: string, companyId: string) => {
         // Save to localStorage so useChat hook picks it up
@@ -46,32 +58,64 @@ export function RoleSelection() {
             position: 'relative',
             overflow: 'hidden'
         }}>
+            {/* LightRays Background */}
+            <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                zIndex: 0,
+                pointerEvents: 'none'
+            }}>
+                <LightRays
+                    raysOrigin="top-center"
+                    raysColor="#ffffff"
+                    raysSpeed={1}
+                    lightSpread={0.5}
+                    rayLength={3}
+                    followMouse={true}
+                    mouseInfluence={0.1}
+                    noiseAmount={0}
+                    distortion={0}
+                    className="custom-rays"
+                    pulsating={false}
+                    fadeDistance={1}
+                    saturation={1}
+                />
+            </div>
+
             {/* Try Demo Button - Top Left */}
-            <button
-                onClick={() => navigate('/demo')}
-                style={{
-                    position: 'absolute',
-                    top: '24px',
-                    left: '24px',
-                    padding: '10px 20px',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: '10px',
-                    color: 'rgba(255, 255, 255, 0.9)',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    zIndex: 10
-                }}
-                onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                }}
-                onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                }}
-            >
-                Try Demo
-            </button>
+            <div style={{
+                opacity: isLoaded ? 1 : 0,
+                transition: 'opacity 0.8s ease',
+                zIndex: 10
+            }}>
+                <button
+                    onClick={() => navigate('/demo')}
+                    style={{
+                        position: 'absolute',
+                        top: '24px',
+                        left: '24px',
+                        padding: '10px 20px',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '10px',
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    }}
+                >
+                    Try Demo
+                </button>
+            </div>
 
             {/* Blur Text Background - Behind Everything */}
             <div style={{
@@ -79,7 +123,7 @@ export function RoleSelection() {
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                zIndex: 0,
+                zIndex: 0, // Same layer as lights, but handled by order
                 pointerEvents: 'none',
                 fontSize: '12rem',
                 fontWeight: 900,
@@ -89,7 +133,7 @@ export function RoleSelection() {
             }}>
                 <BlurText
                     text="CORPWISE"
-                    delay={150}
+                    delay={50} // Faster text animation
                     animateBy="words"
                     direction="top"
                 />
@@ -98,33 +142,39 @@ export function RoleSelection() {
 
 
             {/* Subtitle Section */}
-            <div style={{
-                textAlign: 'center',
-                marginBottom: '80px',
-                zIndex: 1
-            }}>
-                <p style={{
-                    fontSize: '1.3rem',
-                    fontWeight: 500,
-                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6))',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    letterSpacing: '0.05em',
-                    maxWidth: '700px',
-                    margin: '0 auto',
-                    padding: '0 20px'
-                }}>
-                    Secure Enterprise Knowledge Assistant
-                </p>
+            {!showAdminLogin && !showRegister && !showEmployeeLogin && (
                 <div style={{
-                    width: '80px',
-                    height: '3px',
-                    background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent)',
-                    margin: '24px auto 0',
-                    borderRadius: '2px'
-                }} />
-            </div>
+                    textAlign: 'center',
+                    marginBottom: '80px',
+                    zIndex: 1,
+                    opacity: isLoaded ? 1 : 0,
+                    transform: isLoaded ? 'translateY(0)' : 'translateY(10px)',
+                    transition: 'opacity 0.8s ease, transform 0.8s ease'
+                    /* No delay, appears immediately with isLoaded */
+                }}>
+                    <p style={{
+                        fontSize: '1.3rem',
+                        fontWeight: 500,
+                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6))',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                        letterSpacing: '0.05em',
+                        maxWidth: '700px',
+                        margin: '0 auto',
+                        padding: '0 20px'
+                    }}>
+                        Secure Enterprise Knowledge Assistant
+                    </p>
+                    <div style={{
+                        width: '80px',
+                        height: '3px',
+                        background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent)',
+                        margin: '24px auto 0',
+                        borderRadius: '2px'
+                    }} />
+                </div>
+            )}
             {/* Registration Success Message */}
             {registrationSuccess && (
                 <div style={{
@@ -149,47 +199,28 @@ export function RoleSelection() {
             {!showAdminLogin && !showRegister && !showEmployeeLogin ? (
                 <div style={{
                     display: 'flex',
-                    gap: '32px',
-                    alignItems: 'stretch', // Ensure cards are same height
+                    gap: '40px', /* Increased gap */
+                    alignItems: 'stretch',
                     justifyContent: 'center',
                     zIndex: 1,
                     flexWrap: 'wrap',
-                    maxWidth: '1200px', // Allow more width
+                    maxWidth: '1200px',
                     width: '100%',
-                    padding: '20px'
+                    padding: '20px',
+                    perspective: '1000px', /* For 3D feel */
+                    opacity: isLoaded ? 1 : 0,
+                    transform: isLoaded ? 'translateY(0)' : 'translateY(20px)',
+                    transition: 'opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s'
+                    /* 200ms delay after subtitle */
                 }}>
                     {/* Choose Your Plan Card */}
                     <button
                         onClick={() => navigate('/choose-plan')}
                         className="role-btn user"
-                        style={{
-                            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15))',
-                            border: '2px solid rgba(59, 130, 246, 0.3)',
-                            transform: 'scale(1)',
-                            transition: 'all 0.3s ease',
-                            backdropFilter: 'blur(10px)',
-                            padding: '32px',
-                            minWidth: '280px'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)';
-                            e.currentTarget.style.boxShadow = '0 20px 40px rgba(59, 130, 246, 0.3)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1) translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.3)';
-                        }}
+                    /* Inline styles removed */
                     >
                         <div className="role-icon">
-                            <img
-                                src="/target-icon.png"
-                                alt="Choose Plan"
-                                style={{
-                                    width: '72px',
-                                    height: '72px',
-                                    filter: 'brightness(0) invert(1)'
-                                }}
-                            />
+                            <Target size={64} strokeWidth={1.5} color="white" />
                         </div>
                         <div className="role-info">
                             <h3>Choose Your Plan</h3>
@@ -201,31 +232,9 @@ export function RoleSelection() {
                     <button
                         onClick={() => setShowAdminLogin(true)}
                         className="role-btn admin"
-                        style={{
-                            backdropFilter: 'blur(10px)',
-                            padding: '32px',
-                            minWidth: '280px',
-                            transition: 'all 0.3s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)';
-                            e.currentTarget.style.boxShadow = '0 20px 40px rgba(255, 255, 255, 0.1)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1) translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.3)';
-                        }}
                     >
                         <div className="role-icon">
-                            <img
-                                src="/lock-icon.png"
-                                alt="Admin Login"
-                                style={{
-                                    width: '72px',
-                                    height: '72px',
-                                    filter: 'brightness(0) invert(1)'
-                                }}
-                            />
+                            <Lock size={64} strokeWidth={1.5} color="white" />
                         </div>
                         <div className="role-info">
                             <h3>Existing Admin Login</h3>
@@ -234,8 +243,17 @@ export function RoleSelection() {
                     </button>
                 </div>
             ) : showAdminLogin ? (
-                <div style={{ zIndex: 1, maxWidth: '500px', width: '100%' }}>
+                <div style={{
+                    zIndex: 1,
+                    width: '100%',
+                    maxWidth: '500px',
+                    padding: '20px',
+                    opacity: isLoaded ? 1 : 0,
+                    transform: isLoaded ? 'translateY(0)' : 'translateY(20px)',
+                    transition: 'opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s'
+                }}>
                     <AdminAuth
+                        embedded={true}
                         onAuthenticated={(companyId) => {
                             localStorage.setItem("admin_company_id", companyId);
                             navigate("/admin");

@@ -1,0 +1,234 @@
+.onboarding-section .outer-container {
+    display: flex;
+    /* min-height: 100%; REMOVED to fit content */
+    flex: 1 1 0%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+@media (min-width: 640px) {
+    .onboarding-section .outer-container {
+        aspect-ratio: 4 / 3;
+    }
+}
+
+@media (min-width: 768px) {
+    .onboarding-section .outer-container {
+        aspect-ratio: 2 / 1;
+    }
+}
+
+.onboarding-section .step-circle-container {
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    max-width: 42rem;
+    border-radius: 1.5rem;
+    background: rgba(26, 26, 46, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        0 0 40px rgba(96, 165, 250, 0.1);
+}
+
+.onboarding-section .step-indicator-row {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    padding: 1.5rem 1.5rem 1rem 1.5rem;
+    /* Compacted */
+}
+
+.onboarding-section .step-content-default {
+    position: relative;
+    overflow: hidden;
+}
+
+.onboarding-section .step-default {
+    padding-left: 1.5rem;
+    /* Reduced */
+    padding-right: 1.5rem;
+    /* Reduced */
+    padding-bottom: 1rem;
+    /* Reduced */
+    color: #e5e5e5;
+}
+
+.onboarding-section .step-default h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    /* Reduced */
+    background: linear-gradient(135deg, #fff 0%, #60a5fa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.onboarding-section .step-default p {
+    color: #a3a3a3;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.onboarding-section .step-default input,
+.onboarding-section .step-default select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    margin-top: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    color: #fff;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.onboarding-section .step-default input:focus,
+.onboarding-section .step-default select:focus {
+    outline: none;
+    border-color: #60a5fa;
+    background: rgba(96, 165, 250, 0.05);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+.onboarding-section .step-default input::placeholder {
+    color: #666;
+}
+
+.onboarding-section .step-default label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #e5e5e5;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.onboarding-section .footer-container {
+    padding-left: 1.5rem;
+    /* Reduced */
+    padding-right: 1.5rem;
+    /* Reduced */
+    padding-bottom: 1.5rem;
+    /* Reduced */
+}
+
+.onboarding-section .footer-nav {
+    margin-top: 1rem;
+    /* Reduced */
+    display: flex;
+}
+
+.onboarding-section .footer-nav.spread {
+    justify-content: space-between;
+}
+
+.onboarding-section .footer-nav.end {
+    justify-content: flex-end;
+}
+
+.onboarding-section .back-button {
+    transition: all 350ms;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    color: #a3a3a3;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: 500;
+}
+
+.onboarding-section .back-button:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.onboarding-section .back-button.inactive {
+    pointer-events: none;
+    opacity: 0.3;
+}
+
+.onboarding-section .next-button {
+    transition: all 350ms;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    padding: 0.625rem 1.75rem;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 4px 20px rgba(96, 165, 250, 0.3);
+}
+
+.onboarding-section .next-button:hover {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    box-shadow: 0 6px 30px rgba(96, 165, 250, 0.4);
+    transform: translateY(-1px);
+}
+
+.onboarding-section .next-button:active {
+    transform: translateY(0);
+}
+
+.onboarding-section .step-indicator {
+    position: relative;
+    cursor: pointer;
+    outline: none;
+}
+
+.onboarding-section .step-indicator-inner {
+    display: flex;
+    height: 2.5rem;
+    width: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    font-weight: 600;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.onboarding-section .active-dot {
+    height: 0.75rem;
+    width: 0.75rem;
+    border-radius: 9999px;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.onboarding-section .step-number {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.onboarding-section .step-connector {
+    position: relative;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+    height: 0.15rem;
+    flex: 1;
+    overflow: hidden;
+    border-radius: 0.25rem;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.onboarding-section .step-connector-inner {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+}
+
+.onboarding-section .check-icon {
+    height: 1.25rem;
+    width: 1.25rem;
+    color: #fff;
+}

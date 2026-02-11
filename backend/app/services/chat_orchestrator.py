@@ -614,6 +614,19 @@ async def process_chat(user_id: str, conversation_id: str, question: str, compan
         upsert=True
     )
 
+    # ---------------------------------------------------------
+    # 📊 INCREMENT USAGE STATS (Monthly Queries)
+    # ---------------------------------------------------------
+    if company_id:
+        await db.admins.update_one(
+            {"company_id": company_id},
+            {
+                "$inc": {"usage.queries_this_month": 1},
+                "$set": {"usage.last_query_date": datetime.utcnow()}
+            }
+        )
+        print(f"📈 USAGE: Incremented query count for company '{company_id}'")
+
     return answer
 
 

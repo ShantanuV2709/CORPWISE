@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useCallback, useMemo } from 'react';
+import { Zap, Rocket, Gem, Check, X } from 'lucide-react';
 import './TierCard.css';
 
 const DEFAULT_INNER_GRADIENT = 'linear-gradient(145deg,#60496e8c 0%,#71C4FF44 100%)';
@@ -272,6 +273,29 @@ export function TierCard({
                             <div className="tier-header">
                                 {isPopular && <div className="tier-badge popular">Most Popular</div>}
                                 <h3 className="tier-name">{tierName}</h3>
+
+                                {/* AI Dimension Badge */}
+                                <div className="tier-ai-badge">
+                                    {tierId === 'starter' && (
+                                        <>
+                                            <Zap className="ai-icon" size={16} />
+                                            <span className="ai-text">384-dim embeddings • Lightning fast</span>
+                                        </>
+                                    )}
+                                    {tierId === 'professional' && (
+                                        <>
+                                            <Rocket className="ai-icon" size={16} />
+                                            <span className="ai-text">768-dim embeddings • Balanced accuracy</span>
+                                        </>
+                                    )}
+                                    {tierId === 'enterprise' && (
+                                        <>
+                                            <Gem className="ai-icon" size={16} />
+                                            <span className="ai-text">1024-dim embeddings • Maximum intelligence</span>
+                                        </>
+                                    )}
+                                </div>
+
                                 <div className="tier-price">{price}</div>
                                 <p className="tier-description">{description}</p>
                             </div>
@@ -280,7 +304,7 @@ export function TierCard({
                                 {features.map((feature, index) => (
                                     <div key={index} className="tier-feature">
                                         <div className="tier-feature-icon">
-                                            {feature.enabled ? '✓' : '✕'}
+                                            {feature.enabled ? <Check size={14} strokeWidth={3} /> : <X size={14} strokeWidth={3} />}
                                         </div>
                                         <span style={{ opacity: feature.enabled ? 1 : 0.5 }}>
                                             {feature.text}
@@ -290,7 +314,11 @@ export function TierCard({
                             </div>
 
                             <button className={`tier-select-btn ${isSelected ? 'selected' : ''}`}>
-                                {isSelected ? '✓ Selected' : 'Select Plan'}
+                                {isSelected ? (
+                                    <>
+                                        <Check size={18} style={{ marginRight: 8 }} /> Selected
+                                    </>
+                                ) : 'Select Plan'}
                             </button>
                         </div>
                     </div>

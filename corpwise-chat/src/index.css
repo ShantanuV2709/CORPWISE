@@ -22,6 +22,9 @@
   --success-glow: rgba(16, 185, 129, 0.4);
 
   --sidebar-width: 280px;
+
+  --font-heading: 'Outfit', sans-serif;
+  --font-body: 'Inter', sans-serif;
 }
 
 * {
@@ -35,10 +38,19 @@ html,
 #root {
   height: 100%;
   width: 100%;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   color: var(--text-primary);
   background: var(--bg-primary);
   overflow: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
 }
 
 /* =========================================
@@ -542,65 +554,123 @@ html,
   margin-top: 30px;
 }
 
+/* Premium Glass Effect */
+.premium-glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  /* Top Highlight */
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+}
+
 .role-btn {
   flex: 1;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  padding: 30px 20px;
+  background: rgba(20, 20, 25, 0.2);
+  /* Increased transparency (was 0.6) */
+  backdrop-filter: blur(12px);
+  /* Slightly reduced blur for better background visibility */
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 40px 30px;
+  /* More breathing room */
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
   text-align: center;
-  min-width: 200px;
+  min-width: 260px;
   color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.role-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
 }
 
 .role-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  transform: translateY(-5px);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  transform: translateY(-8px) scale(1.02);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(59, 130, 246, 0.1);
+  /* Subtle blue glow */
+}
+
+.role-btn:hover::before {
+  opacity: 1;
 }
 
 .role-icon {
-  font-size: 3rem;
-  margin-bottom: 10px;
-  /* Removed drop-shadow glow */
-  transition: transform 0.3s;
+  /* Removed fixed size and container styling */
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  margin-bottom: 20px;
+  /* Increased margin for spacing */
+  transition: all 0.4s ease;
 }
 
 .role-btn:hover .role-icon {
-  transform: scale(1.1) rotate(5deg);
+  transform: scale(1.15) rotate(5deg);
+  /* Added rotation for dynamic feel */
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));
+  /* Glow directly on icon */
 }
 
 .role-info h3 {
-  font-size: 1.1rem;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
   margin: 0;
-  color: white;
+  color: #fff;
+  letter-spacing: -0.02em;
 }
 
 .role-info span {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: #94a3b8;
+  font-weight: 500;
 }
 
-/* ... skipped lines ... */
 .auth-back-link {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: #94a3b8;
   cursor: pointer;
   transition: all 0.2s;
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 10px 20px;
+  border-radius: 99px;
+  /* Pill shape */
+  border: 1px solid transparent;
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .auth-back-link:hover {
   color: white;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .admin-lock-icon {
@@ -897,13 +967,19 @@ html,
   width: 100%;
   max-width: 420px;
   padding: 40px;
-  background: rgba(20, 20, 25, 0.7);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(20, 20, 25, 0.2);
+  /* Matches role-btn transparency */
+  backdrop-filter: blur(12px);
+  /* Matches role-btn blur */
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Matches role-btn border */
   border-radius: 24px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
   animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 20px auto;
+  transform: translateY(-50px);
+  /* Moderate lift to clear border without being too high */
 }
 
 .auth-title {

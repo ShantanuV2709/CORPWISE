@@ -33,13 +33,16 @@ export async function fetchSubscriptionTiers(): Promise<TierResponse> {
 }
 
 export async function updateSubscriptionTier(tierId: string, companyId: string): Promise<any> {
-    const response = await fetch(`${API_BASE}/admin/subscription`, {
+    const response = await fetch(`${API_BASE}/subscription/update-tier`, {
         method: "PUT",
         headers: {
             "Content-Type": "application/json",
             "X-Company-ID": companyId
         },
-        body: JSON.stringify({ tier_id: tierId })
+        body: JSON.stringify({
+            company_id: companyId,
+            new_tier: tierId
+        })
     });
 
     if (!response.ok) {

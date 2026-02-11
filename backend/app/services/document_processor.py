@@ -5,6 +5,7 @@ Handles chunking, embedding, and indexing of uploaded documents.
 
 from datetime import datetime
 import uuid
+import re
 from pathlib import Path
 from typing import List, Dict
 
@@ -15,6 +16,21 @@ from app.db.mongodb import db
 # Configuration
 CHUNK_SIZE = 400
 OVERLAP = 50
+
+
+def sanitize_for_pinecone_id(text: str) -> str:
+    """
+    Sanitize text to be ASCII-only for Pinecone vector IDs.
+    Removes emojis and non-ASCII characters.
+    """
+    # Remove non-ASCII characters (including emojis)
+    ascii_text = text.encode('ascii', 'ignore').decode('ascii')
+    # Replace multiple spaces/underscores with single underscore
+    ascii_text = re.sub(r'[_\s]+', '_', ascii_text)
+    # Remove leading/trailing underscores
+    ascii_text = ascii_text.strip('_')
+    # If empty after sanitization, use a default
+    return ascii_text if ascii_text else "section"
 
 
 def split_markdown_by_section(text: str) -> List[tuple]:
@@ -89,7 +105,8 @@ async def process_and_index_document(
     doc_id: str,
     doc_type: str,
     filename: str,
-    company_id: str = None  # Added company_id
+    company_id: str = None,  # Company/tenant ID for namespace
+    dimensions: int = 384     # Vector dimensions for embedding
 ) -> Dict:
     """
     Process a document file and index it to Pinecone.
@@ -100,11 +117,11 @@ async def process_and_index_document(
         doc_type: Document category (e.g., 'hr', 'it', 'policy')
         filename: Original filename
         company_id: Optional company/tenant ID for namespace isolation
+        dimensions: Vector dimensions (384, 768, or 1024) based on tier
         
     Returns:
         Dict with processing results
     """
-    # ... (File reading logic omitted for brevity as it is unchanged) ...
     # Read file content
     content = ""
     if filename.lower().endswith(".pdf"):
@@ -140,33 +157,40 @@ async def process_and_index_document(
         sections = [("General Content", content)]
     
     # Process each section
-    index = get_index()
+    # Get index for specified dimensions
+    index = get_index(dimensions)
     pinecone_ids = []
     total_chunks = 0
     
     # Target namespace: default to "" if None
     namespace = company_id if company_id else ""
+    
+    print(f"📄 Processing document with {dimensions}-dim embeddings")
 
     for section_title, section_body in sections:
         chunks = chunk_text(section_body)
         
+        # Sanitize section title for use in Pinecone ID (ASCII only)
+        safe_section_title = sanitize_for_pinecone_id(section_title)
+        
         for i, chunk_text_content in enumerate(chunks):
-            # Generate embedding
-            embedding = await embed_text(chunk_text_content)
+            # Generate embedding with specified dimensions
+            embedding = await embed_text(chunk_text_content, dimensions=dimensions)
             
-            # Create unique ID
-            chunk_id = f"{doc_id}__{section_title}__{i}"
+            # Create unique ID with sanitized section name
+            chunk_id = f"{doc_id}__{safe_section_title}__{i}"
             pinecone_ids.append(chunk_id)
             
-            # Prepare metadata
+            # Prepare metadata (keep original section_title for metadata)
             metadata = {
                 "text": chunk_text_content,
                 "source": f"{doc_type}/{filename}",
-                "section": section_title,
+                "section": section_title,  # Original with emojis for display
                 "doc_id": doc_id,
                 "doc_type": doc_type,
                 "chunk_index": i,
-                "company_id": namespace # Optional logging
+                "company_id": namespace, # Optional logging
+                "dimensions": dimensions  # Track which tier/model was used
             }
             
             # Upsert to Pinecone
@@ -181,9 +205,10 @@ async def process_and_index_document(
                 "chunk_id": chunk_id,
                 "text": chunk_text_content,
                 "source": metadata["source"],
-                "section": section_title,
+                "section": section_title,  # Original with emojis
                 "doc_type": doc_type,
                 "company_id": namespace, # Store in Mongo too
+                "dimensions": dimensions,  # Track tier
                 "created_at": datetime.utcnow()
             })
             

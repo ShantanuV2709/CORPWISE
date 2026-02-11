@@ -133,7 +133,7 @@ export function SuperAdminDashboard({ token, onLogout }: SuperAdminDashboardProp
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 40 }}>
                     <div>
                         <h1 style={{ fontSize: "2rem", fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 12 }}>
-                            <span style={{ fontSize: "2.5rem" }}>⚡</span>
+                            <span style={{ fontSize: "2.5rem" }}></span>
                             <DecryptedText text="Super Admin Portal" animateOn="view" speed={100} />
                         </h1>
                         <p style={{ color: "var(--text-secondary)", marginTop: 8 }}>Overview and management of all organizations</p>
@@ -183,7 +183,7 @@ export function SuperAdminDashboard({ token, onLogout }: SuperAdminDashboardProp
                         <div className="glass-card" style={{ padding: 24 }}>
                             <div style={{ color: "var(--text-secondary)", fontSize: "0.9rem", fontWeight: 600 }}>Revenue Est.</div>
                             <div style={{ fontSize: "2.5rem", fontWeight: 800, margin: "8px 0", color: "#a78bfa" }}>
-                                ${statistics.tier_distribution['professional'] * 149 + statistics.tier_distribution['starter'] * 49}
+                                ₹{(statistics.tier_distribution['professional'] * 12000 + statistics.tier_distribution['starter'] * 4000).toLocaleString('en-IN')}
                             </div>
                             <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Monthly Recurring</div>
                         </div>
@@ -333,8 +333,8 @@ export function SuperAdminDashboard({ token, onLogout }: SuperAdminDashboardProp
                                         color: "white", outline: "none"
                                     }}
                                 >
-                                    <option value="starter">Starter ($49/mo)</option>
-                                    <option value="professional">Professional ($149/mo)</option>
+                                    <option value="starter">Starter (₹4,000/mo)</option>
+                                    <option value="professional">Professional (₹12,000/mo)</option>
                                     <option value="enterprise">Enterprise (Custom)</option>
                                 </select>
                             </div>
