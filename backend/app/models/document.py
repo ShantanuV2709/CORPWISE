@@ -73,14 +73,20 @@ class DocumentModel:
         return documents
     
     @staticmethod
-    async def get_by_id(doc_id: str):
-        """Get document by ID."""
-        return await DocumentModel.collection.find_one({"_id": doc_id})
+    async def get_by_id(doc_id: str, company_id: Optional[str] = None):
+        """Get document by ID and optionally Company ID."""
+        query = {"_id": doc_id}
+        if company_id:
+            query["company_id"] = company_id
+            
+        return await DocumentModel.collection.find_one(query)
     
     @staticmethod
-    async def delete(doc_id: str):
-        """Delete document record."""
-        doc = await DocumentModel.get_by_id(doc_id)
-        if doc:
-            await DocumentModel.collection.delete_one({"_id": doc_id})
-        return doc
+    async def delete(doc_id: str, company_id: Optional[str] = None):
+        """Delete document record, ensuring company ownership."""
+        query = {"_id": doc_id}
+        if company_id:
+            query["company_id"] = company_id
+            
+        result = await DocumentModel.collection.delete_one(query)
+        return result.deleted_count > 0

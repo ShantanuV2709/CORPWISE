@@ -76,3 +76,5 @@ PINECONE_FIX_GUIDE.md
 multi_tenant_architecture.md
 MULTI_DIMENSION_BRAINSTORM.md
 presentation.md
+backend/scripts/verify_deletion.py
+backend/scripts/verify_usage_limits.py

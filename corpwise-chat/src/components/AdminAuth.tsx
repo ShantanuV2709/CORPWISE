@@ -27,7 +27,8 @@ export function AdminAuth({ onAuthenticated, onBack, onSuperAdmin, embedded = fa
             console.log("Admin Login Response:", data);
 
             if (data.is_super_admin && onSuperAdmin) {
-                onSuperAdmin("masterkey123");
+                // Pass the entered password as the token, since the backend validated it against SUPER_USER_KEY
+                onSuperAdmin(password);
                 return;
             }
 

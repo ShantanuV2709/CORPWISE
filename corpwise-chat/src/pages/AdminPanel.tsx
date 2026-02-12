@@ -398,7 +398,7 @@ export function AdminPanel() {
                     </button>
                 </aside>
 
-                <main className="admin-content" style={{ flex: 1, padding: "40px", maxWidth: 1200, margin: "0 auto", width: "100%" }}>
+                <main className="admin-content" style={{ flex: 1, padding: "40px", maxWidth: activeTab === 'search-debug' ? "100%" : 1200, margin: "0 auto", width: "100%", display: activeTab === 'search-debug' ? "block" : undefined }}>
 
                     {activeTab === 'documents' && (
                         <>
@@ -852,44 +852,51 @@ export function AdminPanel() {
                                 </p>
                             </div>
 
-                            <div style={{ display: 'flex', gap: 16, marginBottom: 32 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
                                 <input
                                     type="text"
                                     placeholder="Enter test query (e.g. 'What is the refund policy?')"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleSearch();
+                                        }
+                                    }}
                                     style={{
-                                        flex: 1,
+                                        width: "100%",
                                         padding: "16px",
                                         borderRadius: 12,
                                         background: "rgba(255,255,255,0.05)",
                                         border: "1px solid rgba(255,255,255,0.1)",
                                         color: "white",
-                                        fontSize: "1rem"
+                                        fontSize: "1rem",
+                                        fontFamily: "inherit"
                                     }}
                                 />
-                                <button
-                                    onClick={handleSearch}
-                                    disabled={searchLoading || !searchQuery.trim()}
-                                    className="glass-btn hover-glow-green"
-                                    style={{
-                                        padding: "0 32px",
-                                        borderRadius: 12,
-                                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                                        color: "white",
-                                        fontWeight: 600,
-                                        border: "none",
-                                        cursor: searchLoading ? "not-allowed" : "pointer",
-                                        display: "flex",
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        opacity: searchLoading ? 0.7 : 1
-                                    }}
-                                >
-                                    {searchLoading ? <Loader2 className="animate-spin" /> : <Search size={20} />}
-                                    Test
-                                </button>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                    <button
+                                        onClick={handleSearch}
+                                        disabled={searchLoading || !searchQuery.trim()}
+                                        className="glass-btn hover-glow-green"
+                                        style={{
+                                            padding: "12px 32px",
+                                            borderRadius: 12,
+                                            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                            color: "white",
+                                            fontWeight: 600,
+                                            border: "none",
+                                            cursor: searchLoading ? "not-allowed" : "pointer",
+                                            display: "flex",
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            opacity: searchLoading ? 0.7 : 1
+                                        }}
+                                    >
+                                        {searchLoading ? <Loader2 className="animate-spin" /> : <Search size={20} />}
+                                        Test Retrieval
+                                    </button>
+                                </div>
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

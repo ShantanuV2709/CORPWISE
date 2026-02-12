@@ -34,6 +34,7 @@ interface TierCardProps {
     enableTilt?: boolean;
     innerGradient?: string;
     behindGlowColor?: string;
+    currentPlan?: boolean; // NEW PROP
 }
 
 export function TierCard({
@@ -47,12 +48,15 @@ export function TierCard({
     onSelect,
     enableTilt = true,
     innerGradient,
-    behindGlowColor
+    behindGlowColor,
+    currentPlan = false
 }: TierCardProps) {
     const wrapRef = useRef<HTMLDivElement>(null);
     const shellRef = useRef<HTMLDivElement>(null);
     const enterTimerRef = useRef<number | null>(null);
     const leaveRafRef = useRef<number | null>(null);
+
+    // ... (keep tilt engine and hooks same) ...
 
     const tiltEngine = useMemo(() => {
         if (!enableTilt) return null;
@@ -248,13 +252,15 @@ export function TierCard({
     );
 
     const handleSelect = useCallback(() => {
+        // Prevent selecting current plan again? Or allow it?
+        // Let's enable re-selection or just visually indicate it's active
         onSelect(tierId);
     }, [onSelect, tierId]);
 
     return (
         <div
             ref={wrapRef}
-            className={`tier-card-wrapper ${isSelected ? 'selected' : ''}`}
+            className={`tier-card-wrapper ${isSelected || currentPlan ? 'selected' : ''}`}
             style={cardStyle}
         >
             <div className="tier-behind" />
@@ -265,13 +271,14 @@ export function TierCard({
                 onPointerMove={handlePointerMove}
                 onPointerLeave={handlePointerLeave}
             >
-                <section className={`tier-card ${isSelected ? 'selected' : ''}`} onClick={handleSelect}>
+                <section className={`tier-card ${isSelected || currentPlan ? 'selected' : ''}`} onClick={handleSelect}>
                     <div className="tier-inside">
                         <div className="tier-shine" />
                         <div className="tier-glare" />
                         <div className="tier-content">
                             <div className="tier-header">
                                 {isPopular && <div className="tier-badge popular">Most Popular</div>}
+                                {currentPlan && <div className="tier-badge active-plan" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)' }}>Current Plan</div>}
                                 <h3 className="tier-name">{tierName}</h3>
 
                                 {/* AI Dimension Badge */}
@@ -313,8 +320,16 @@ export function TierCard({
                                 ))}
                             </div>
 
-                            <button className={`tier-select-btn ${isSelected ? 'selected' : ''}`}>
-                                {isSelected ? (
+                            <button
+                                className={`tier-select-btn ${isSelected || currentPlan ? 'selected' : ''}`}
+                                disabled={currentPlan}
+                                style={currentPlan ? { opacity: 0.8, cursor: 'default' } : {}}
+                            >
+                                {currentPlan ? (
+                                    <>
+                                        <Check size={18} style={{ marginRight: 8 }} /> Current Plan
+                                    </>
+                                ) : isSelected ? (
                                     <>
                                         <Check size={18} style={{ marginRight: 8 }} /> Selected
                                     </>

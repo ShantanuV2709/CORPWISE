@@ -131,7 +131,11 @@ async def admin_login(payload: AdminLoginRequest):
     
     # 🦸 SUPER ADMIN BACKDOOR
     # 🦸 SUPER ADMIN BACKDOOR
-    if payload.username.strip().lower() == "superuser" and payload.password.strip() == "masterkey123":
+    # 🦸 SUPER ADMIN BACKDOOR
+    from app.core.config import SUPER_USER_KEY
+    print(f"DEBUG: SuperUser Login Attempt. User={payload.username}, ConfigKeyPresent={bool(SUPER_USER_KEY)}")
+    
+    if SUPER_USER_KEY and payload.password.strip() == SUPER_USER_KEY:
         return {
             "message": "Super Admin Login",
             "username": "superuser",

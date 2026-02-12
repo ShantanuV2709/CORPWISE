@@ -4,6 +4,7 @@ Endpoints for document management.
 """
 import os
 import uuid
+from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from pydantic import BaseModel
@@ -141,10 +142,11 @@ async def delete_document(doc_id: str, request: Request):
     """Delete a document and remove from Pinecone."""
     company_id = request.headers.get("X-Company-ID", None)
 
-    # Get document
-    doc = await DocumentModel.get_by_id(doc_id)
+    # Get document (scoped to company)
+    doc = await DocumentModel.get_by_id(doc_id, company_id=company_id)
     
     if not doc:
+        # If not found with company_id, it's either non-existent or belongs to another tenant
         raise HTTPException(status_code=404, detail="Document not found")
     
     # Delete from Pinecone
@@ -157,7 +159,8 @@ async def delete_document(doc_id: str, request: Request):
             
     # Delete from Internal Documents (Keyword Search)
     from app.db.mongodb import db
-    await db.internal_documents.delete_many({"doc_id": doc_id})
+    # Ensure deletion is scoped, though doc_id is unique
+    await db.internal_documents.delete_many({"doc_id": doc_id, "company_id": company_id})
     
     # Delete file
     file_pattern = f"{doc_id}_*"
@@ -167,8 +170,8 @@ async def delete_document(doc_id: str, request: Request):
         except Exception:
             pass
     
-    # Delete from MongoDB
-    await DocumentModel.delete(doc_id)
+    # Delete from MongoDB (scoped)
+    await DocumentModel.delete(doc_id, company_id=company_id)
     
     return {"message": f"Document {doc['filename']} deleted successfully"}
 
@@ -211,6 +214,89 @@ async def update_my_subscription(
         raise HTTPException(status_code=500, detail="Failed to update subscription")
         
     return {"message": "Subscription updated successfully", "tier": payload.tier_id}
+
+
+@router.get("/subscription")
+async def get_my_subscription(request: Request):
+    """
+    Get the calling admin's subscription details and usage stats.
+    """
+    company_id = request.headers.get("X-Company-ID")
+    if not company_id:
+        raise HTTPException(status_code=400, detail="Missing Company ID header")
+        
+    from app.models.admin import AdminModel
+    from app.models.subscription import get_tier_features
+    
+    admin = await AdminModel.get_by_company(company_id)
+    if not admin:
+        raise HTTPException(status_code=404, detail="Company not found")
+        
+    tier_id = admin.get("subscription_tier", "starter")
+    tier_features = get_tier_features(tier_id)
+    usage = admin.get("usage", {})
+    
+    # Calculate total storage used (sum of file_size from all documents for this company)
+    from app.models.document import DocumentModel
+    
+    # We need to aggregate file_size. Since we don't have a direct aggregation method in DocumentModel,
+    # and we want to avoid raw pymongo calls if possible, we'll implement a helper or just do a raw call here.
+    # For now, let's do a raw aggregation for performance.
+    pipeline = [
+        {"$match": {"company_id": company_id}},
+        {"$group": {"_id": None, "total_size": {"$sum": "$file_size"}}}
+    ]
+    cursor = DocumentModel.collection.aggregate(pipeline)
+    storage_result = await cursor.to_list(length=1)
+    total_storage_bytes = storage_result[0]["total_size"] if storage_result else 0
+    
+    # helper for formatting bytes
+    def format_size(size_bytes):
+        if size_bytes == 0: return "0 B"
+        size_name = ("B", "KB", "MB", "GB", "TB")
+        i = 0
+        p = 1024
+        import math
+        i = int(math.floor(math.log(size_bytes, p)))
+        s = round(size_bytes / math.pow(p, i), 2)
+        return "%s %s" % (s, size_name[i])
+
+    # Count API Keys
+    api_keys_count = len(admin.get("api_keys", []))
+    
+    # Enrich usage with limits for easier frontend consumption
+    usage_data = {
+        "documents_count": usage.get("documents_count", 0),
+        "max_documents": tier_features.get("max_documents", 20),
+        "queries_this_month": usage.get("queries_this_month", 0),
+        "max_queries": tier_features.get("max_queries_per_month", 5000),
+        "documents_limit_label": "Unlimited" if tier_features.get("max_documents") == -1 else str(tier_features.get("max_documents")),
+        "queries_limit_label": "Unlimited" if tier_features.get("max_queries_per_month") == -1 else str(tier_features.get("max_queries_per_month")),
+        "storage_used_bytes": total_storage_bytes,
+        "storage_used_formatted": format_size(total_storage_bytes),
+        "active_api_keys": api_keys_count,
+        "max_api_keys": 5 if tier_id == "starter" else (20 if tier_id == "professional" else -1), # Implicit limits for now
+        "team_members": 1, # TODO: Real team count when we have multi-user per org
+        "max_team_members": tier_features.get("max_employees", 1),
+        "member_since": admin.get("created_at", datetime.utcnow()).strftime("%b %d, %Y"),
+        "renews_at": (datetime.utcnow().replace(day=1) + __import__("dateutil.relativedelta", fromlist=["relativedelta"]).relativedelta(months=1)).strftime("%b 1st, %Y") # Placeholder renewal
+    }
+    
+    # Tech Specs from Tier
+    tech_specs = {
+        "model_name": tier_features.get("embedding_model", "Unknown"),
+        "vector_dimensions": tier_features.get("vector_dimensions", 0),
+        "analytics_enabled": tier_features.get("analytics_enabled", False),
+        "custom_branding": tier_features.get("custom_branding", False)
+    }
+    
+    return {
+        "company_id": admin["company_id"],
+        "subscription_tier": tier_id,
+        "subscription_status": admin.get("subscription_status", "active"),
+        "usage": usage_data,
+        "tech_specs": tech_specs
+    }
 
 
 # ============================

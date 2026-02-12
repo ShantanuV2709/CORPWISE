@@ -10,7 +10,11 @@ router = APIRouter(prefix="/super", tags=["Super Admin"])
 # that this endpoint is only known to the SuperAdminDashboard which gates access.
 # For better security, let's demand a secret header.
 async def verify_super_admin(x_super_token: str = Header(None)):
-    if x_super_token != "masterkey123": # Simple shared secret for now
+    from app.core.config import SUPER_USER_KEY
+    if not SUPER_USER_KEY:
+        raise HTTPException(status_code=500, detail="Super User Key not configured")
+        
+    if x_super_token != SUPER_USER_KEY: 
          raise HTTPException(status_code=403, detail="Unauthorized")
 
 @router.get("/companies", dependencies=[Depends(verify_super_admin)])

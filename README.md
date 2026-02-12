@@ -20,9 +20,10 @@ Ask questions, get answers instantly—just like asking a colleague.
 ## Key Features
 
 ### Admin & Control
-- Document Upload & Management: Admins can upload `.md` and `.txt` files with automatic chunking and indexing
-- User Management: Role-based access control (Employees vs. Admins)
-- System Monitoring: View ingestion status and system health
+- **Intuitive Sidebar Navigation:** Seamlessly switch between Document Management, API Keys, and Retrieval Testing
+- **Document Upload & Management:** Admins can upload `.md` and `.txt` files with automatic chunking and indexing
+- **User Management:** Role-based access control (Employees vs. Admins)
+- **System Monitoring:** View ingestion status and system health
 
 ### Smart Conversational AI
 - Natural Language Queries: Ask questions in plain English (or any language)
@@ -44,9 +45,11 @@ Ask questions, get answers instantly—just like asking a colleague.
 - **Immersive UI:** A persistent, animated background with floating glass elements (`backdrop-filter`) creates a modern, depth-filled experience
 - **Fluid Animations:** Smooth transitions, hover lift effects, and refined message bubbles
 - **Responsive Layout:** Fully optimized for both desktop dashboards and mobile devices
+- **Onboarding Hub:** Dedicated "Quick Start" and "Documentation" views to guide new users through widget integration and API usage
 
 ### Subscription Management
 - **Tiered Access:** Built-in support for multiple subscription tiers (Free, Professional, Enterprise)
+- **Strict Usage Limits:** Robust middleware enforces query caps (e.g., 500/month) and document storage limits per tier
 - **Feature Gating:** Automatically restricts features (e.g., max documents, analytics) based on the active plan
 - **Self-Service Updates:** Admins can upgrade their organization's tier directly from the portal
 
@@ -57,6 +60,7 @@ Ask questions, get answers instantly—just like asking a colleague.
 
 ### Search Debugging & Observability
 - **Test Retrieval Tool:** Dedicated admin tab to simulate queries and visualize retrieved chunks with confidence scores
+- **Enhanced UI:** Full-width query input and responsive result cards for better readability
 - **Metadata Visibility:** View detailed document metrics including vector dimensions (e.g., 1536d) and file sizes
 - **Score Transparency:** Color-coded similarity scores help admins understand why certain answers are generated
 

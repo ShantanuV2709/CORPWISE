@@ -36,9 +36,13 @@ async def chat(request: Request, payload: ChatRequest):
     print(f"📥 API /chat | Extracted X-Company-ID: '{company_id}'")
     print(f"👤 API /chat | User ID: '{final_user_id}' (Header: {header_user_id})")
 
-    # Validating API Key if present (Security Layer)
+    # =========================================================================
+    # 🔐 AUTHENTICATION ENFORCEMENT
+    # =========================================================================
+    # 1. API KEY (External Apps & Internal if configured)
     api_key = request.headers.get("X-API-Key", None)
-    
+    is_authenticated = False
+
     if api_key:
         if not company_id:
              from fastapi import HTTPException
@@ -52,6 +56,30 @@ async def chat(request: Request, payload: ChatRequest):
              raise HTTPException(status_code=401, detail="Invalid API Key")
         
         print(f"🔑 API Key Verified: {valid_key.get('name', 'Unknown')}")
+        is_authenticated = True
+
+    # 2. JWT / SESSION (Internal Frontend)
+    # TODO: Implement proper JWT verification here.
+    # For now, we'll allow requests WITHOUT API Key ONLY IF they come from our known frontend origin
+    # AND have a valid session cookie (mocked logic or check for internal header if secured by upstream)
+    # BUT, to meet "Enforce authenticated identity... never trust only X-Company-ID", we must strictly require explicit auth.
+    
+    # TEMPORARY COMPATIBILITY MODE for Internal Frontend until it sends API Key:
+    # If no API key, we check if it's a "trusted" internal call? 
+    # NO. The user said "Enforce... never trust only X-Company-ID".
+    # So we MUST require API Key OR User Session.
+    
+    # Assuming the current frontend sends X-Company-ID but NO API KEY yet.
+    # We will BREAK frontend chat unless we add API Key sending to frontend FIRST.
+    # However, user accepted breaking changes if we have a plan. 
+    # Plan: "Internal Frontend: Will be updated to send X-API-Key".
+    
+    if not is_authenticated:
+        # Strict Fail Close
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="Authentication required. Provide X-API-Key header.")
+
+    # =========================================================================
 
     # Check usage limits if company_id is provided
     if company_id:

@@ -100,10 +100,13 @@ class AdminSubscriptionHelpers:
         if result.deleted_count == 0:
             return False
         
-        # 2. Delete all chunks associated with this company
+        # 2. Delete all documents associated with this company
+        await db.documents.delete_many({"company_id": company_id_lower})
+
+        # 3. Delete all chunks associated with this company
         await db.chunks.delete_many({"company_id": company_id_lower})
         
-        # 3. Delete Pinecone namespace (all vectors for this company)
+        # 4. Delete Pinecone namespace (all vectors for this company)
         try:
             index = get_index()
             index.delete(delete_all=True, namespace=company_id_lower)

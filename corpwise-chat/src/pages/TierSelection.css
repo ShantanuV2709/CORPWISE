@@ -1,12 +1,13 @@
 .tier-selection-page {
-    min-height: 100vh;
-    /* Use min-height to allow growth */
+    height: 100vh;
+    /* Fixed height to match screen */
     width: 100vw;
     /* Background handled by MainLayout */
     background: transparent;
     display: flex;
     position: relative;
-    /* overflow: hidden; REMOVED to allow body scroll */
+    overflow: hidden;
+    /* Prevent body scroll, handle inside main-content */
 }
 
 .side-panel {
@@ -20,11 +21,8 @@
     padding: 24px 16px;
     overflow-y: auto;
     flex-shrink: 0;
-    position: sticky;
-    /* Make sticky */
-    top: 0;
-    height: 100vh;
-    /* Full viewport height */
+    height: 100%;
+    /* Match parent height */
     z-index: 10;
 }
 
@@ -182,9 +180,12 @@
 .main-content {
     flex: 1;
     padding: 32px 32px 200px 32px;
-    /* height: 100%; REMOVED */
-    /* overflow-y: auto; REMOVED */
+    height: 100%;
+    /* Match parent height */
+    overflow-y: auto;
+    /* Enable vertical scrolling for content */
     position: relative;
+    scroll-behavior: smooth;
 }
 
 /* ... existing styles ... */
@@ -482,4 +483,253 @@
         transform: translateY(0);
         opacity: 1;
     }
+}
+
+/* =========================================
+   Current Plan & Usage Styles
+   ========================================= */
+.current-plan-section {
+    margin-bottom: 60px;
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* ... previous styles ... */
+
+.current-plan-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 40px;
+    display: flex;
+    gap: 60px;
+    align-items: center;
+    /* Align items center vertically */
+    backdrop-filter: blur(20px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+    flex-wrap: wrap;
+    /* Allow wrapping on small screens */
+}
+
+/* Wrapper for the card inside the current plan box to constrain width */
+.plan-card-wrapper-current {
+    flex: 1;
+    max-width: 380px;
+    /* Constrain width of the card */
+    min-width: 300px;
+}
+
+.usage-stats-right {
+    flex: 1.5;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 16px;
+    padding: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    min-width: 300px;
+}
+
+/* Scrollable Container for Upgrades */
+.tier-cards-container {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 32px;
+    padding: 20px 40px;
+    /* Add padding for scroll/shadows */
+    width: 100%;
+    /* Use full available width */
+    max-width: 100%;
+    /* Prevent overflowing parent */
+    scroll-behavior: smooth;
+    justify-content: flex-start;
+    /* Start from left */
+
+    /* Show scrollbar for better UX */
+    scrollbar-width: auto;
+    scrollbar-color: rgba(96, 165, 250, 0.3) rgba(255, 255, 255, 0.05);
+}
+
+/* Force tier cards to maintain width and not shrink */
+.tier-cards-container .tier-card-wrapper {
+    flex-shrink: 0;
+    width: 340px;
+    /* Fixed width for better scrolling */
+    min-width: 340px;
+}
+
+.tier-cards-container::-webkit-scrollbar {
+    display: block;
+    height: 8px;
+}
+
+.tier-cards-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.tier-cards-container::-webkit-scrollbar-thumb {
+    background: rgba(96, 165, 250, 0.3);
+    border-radius: 4px;
+}
+
+.tier-cards-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(96, 165, 250, 0.5);
+}
+
+/* Add mask to indicate scroll */
+.tier-cards-container-mask {
+    position: relative;
+}
+
+.tier-cards-container-mask::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100px;
+    background: linear-gradient(to right, transparent, var(--bg-color-dark, #0a0a0c));
+    /* Match bg */
+    pointer-events: none;
+}
+
+@media (max-width: 1024px) {
+    .current-plan-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 40px;
+    }
+
+    .plan-card-wrapper-current {
+        max-width: 100%;
+    }
+}
+
+.current-plan-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.plan-info-left {
+    flex: 1;
+    max-width: 400px;
+}
+
+.plan-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.plan-badge.active {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.current-tier-name {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+    background: linear-gradient(to right, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.current-tier-price {
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 24px;
+}
+
+.plan-description {
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.6;
+    font-size: 1.05rem;
+}
+
+.usage-stats-right {
+    flex: 1.5;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 16px;
+    padding: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.usage-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.usage-item {
+    margin-bottom: 24px;
+}
+
+.usage-item:last-child {
+    margin-bottom: 0;
+}
+
+.usage-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.usage-limit {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.85rem;
+}
+
+.progress-bar-bg {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s ease-out;
+}
+
+.upgrade-section-title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 60px 0 40px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+.upgrade-section-title::before,
+.upgrade-section-title::after {
+    content: '';
+    height: 1px;
+    width: 100px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
 }

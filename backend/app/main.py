@@ -43,10 +43,11 @@ app = FastAPI(
 # =====================================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    # TODO: In production, replace with specific domains e.g. ["https://corpwise.ai", "http://localhost:3000"]
+    allow_origins=["http://localhost:3000", "http://localhost:5173"], # React default ports
+    allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*", "X-Company-ID", "Content-Type", "Authorization"],
+    allow_headers=["*"],
 )
 
 # =====================================================

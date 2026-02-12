@@ -142,3 +142,48 @@ export async function debugSearch(companyId: string, query: string): Promise<{ r
 }
 
 
+export interface UsageStats {
+    documents_count: number;
+    max_documents: number;
+    queries_this_month: number;
+    max_queries: number;
+    documents_limit_label: string;
+    queries_limit_label: string;
+    storage_used_bytes?: number;
+    storage_used_formatted?: string;
+    active_api_keys?: number;
+    max_api_keys?: number;
+    team_members?: number;
+    max_team_members?: number;
+    member_since?: string;
+    renews_at?: string;
+}
+
+export interface TechSpecs {
+    model_name: string;
+    vector_dimensions: number;
+    analytics_enabled: boolean;
+    custom_branding: boolean;
+}
+
+export interface SubscriptionDetails {
+    company_id: string;
+    subscription_tier: string;
+    subscription_status: string;
+    usage: UsageStats;
+    tech_specs?: TechSpecs;
+}
+
+export async function getSubscription(companyId: string): Promise<SubscriptionDetails> {
+    const response = await fetch(`${API_BASE}/admin/subscription`, {
+        headers: {
+            "X-Company-ID": companyId,
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to fetch subscription");
+    }
+
+    return response.json();
+}

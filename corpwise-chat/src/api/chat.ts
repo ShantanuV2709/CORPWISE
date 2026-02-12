@@ -24,6 +24,16 @@ export async function sendQuery(
     headers["X-User-ID"] = userId;
   }
 
+  // 🔐 API Key Authentication
+  // Ideally, this should be fetched from context or secure store. 
+  // For now, we'll look for it in localStorage where the Admin Dashboard saves it.
+  const storedApiKey = localStorage.getItem('corpwise_api_key');
+  if (storedApiKey) {
+    headers["X-API-Key"] = storedApiKey;
+  } else {
+    console.warn("[API] No API Key found in localStorage. Chat request may fail.");
+  }
+
   const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: headers,
