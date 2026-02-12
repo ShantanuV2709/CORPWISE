@@ -174,11 +174,34 @@ export default function App() {
 }
 ```
 
-### 4. Configure Multi-Tenancy
-To make the widget use a specific company's data, simply set the default `companyId` in `hooks/useChat.ts` or pass it as a prop:
+### 4. Configure Authentication (Secure)
+To connect securely to CORPWISE, you need an **API Key** and your **Company ID**.
+
+1. **Generate an API Key**:
+   - Log in to your CORPWISE Admin Panel.
+   - Go to the **API Access** tab.
+   - Click "Generate New Key", name it (e.g., "Website Widget"), and copy the key.
+
+2. **Configure the Widget**:
+   Update `hooks/useChat.ts` or your config file to include these credentials.
+
 ```typescript
-// in useChat.ts
-const [companyId] = useState("silaibook"); // or load from your app's auth context
+// src/config.ts
+export const CORPWISE_CONFIG = {
+  API_URL: "https://your-corpwise-backend.com",
+  COMPANY_ID: "your-company-id", // e.g., "silaibook"
+  API_KEY: "sk-corpwise-..."     // The key you generated
+};
+```
+
+3. **Update API Calls**:
+   Ensure `api/chat.ts` sends these headers:
+```typescript
+headers: {
+    "Content-Type": "application/json",
+    "X-Company-ID": CORPWISE_CONFIG.COMPANY_ID,
+    "X-API-Key": CORPWISE_CONFIG.API_KEY
+}
 ```
 
 ---
