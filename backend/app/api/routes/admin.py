@@ -82,7 +82,9 @@ async def upload_document(
             doc_id=doc_id,
             filename=file.filename,
             doc_type=doc_type,
-            company_id=company_id # Save namespace
+            company_id=company_id, # Save namespace
+            dimensions=dimensions,   # Track dimensions
+            file_size=len(content)   # Track size
         )
         
         # Process and index with tier-specific dimensions
@@ -209,3 +211,33 @@ async def update_my_subscription(
         raise HTTPException(status_code=500, detail="Failed to update subscription")
         
     return {"message": "Subscription updated successfully", "tier": payload.tier_id}
+
+
+# ============================
+# Search Debugging
+# ============================
+class SearchDebugRequest(BaseModel):
+    query: str
+    top_k: int = 5
+
+@router.post("/search_debug")
+async def debug_search(
+    payload: SearchDebugRequest,
+    request: Request
+):
+    """
+    Test retrieval to see semantic scores and matched chunks.
+    """
+    company_id = request.headers.get("X-Company-ID")
+    if not company_id:
+        raise HTTPException(status_code=400, detail="Missing Company ID header")
+        
+    from app.services.retriever import retrieve_with_scores
+    
+    results = await retrieve_with_scores(
+        query=payload.query,
+        company_id=company_id,
+        top_k=payload.top_k
+    )
+    
+    return {"results": results}

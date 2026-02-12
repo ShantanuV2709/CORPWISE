@@ -18,7 +18,9 @@ class DocumentModel:
         filename: str,
         doc_type: str,
         uploaded_by: str = "system",
-        company_id: Optional[str] = None
+        company_id: Optional[str] = None,
+        dimensions: int = 0,
+        file_size: int = 0
     ):
         """Create a new document record."""
         document = {
@@ -27,6 +29,8 @@ class DocumentModel:
             "doc_type": doc_type,
             "uploaded_by": uploaded_by,
             "company_id": company_id,
+            "dimensions": dimensions,
+            "file_size": file_size,
             "uploaded_at": datetime.utcnow(),
             "status": "pending",
             "chunk_count": 0,

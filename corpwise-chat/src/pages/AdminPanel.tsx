@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AdminAuth } from "../components/AdminAuth";
 import {
     uploadDocument, listDocuments, deleteDocument, Document as AdminDocument,
-    listApiKeys, generateApiKey, revokeApiKey, ApiKey
+    listApiKeys, generateApiKey, revokeApiKey, ApiKey, debugSearch
 } from "../api/admin";
 import {
     Lock,
@@ -23,6 +23,7 @@ import {
     Copy,
     Shield,
     Plus,
+    Search,
     X
 } from "lucide-react";
 
@@ -37,11 +38,16 @@ export function AdminPanel() {
     const [isDragging, setIsDragging] = useState(false);
 
     // API Key State
-    const [activeTab, setActiveTab] = useState<'documents' | 'api-keys'>('documents');
+    const [activeTab, setActiveTab] = useState<'documents' | 'api-keys' | 'search-debug'>('documents');
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
     const [generatedKey, setGeneratedKey] = useState<{ key: string, name: string } | null>(null);
     const [newKeyName, setNewKeyName] = useState("");
     const [showKeyModal, setShowKeyModal] = useState(false);
+
+    // Search Debug State
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
 
     const navigate = useNavigate();
 
@@ -97,6 +103,19 @@ export function AdminPanel() {
             loadApiKeys();
         } catch (error) {
             alert("Failed to revoke key: " + error);
+        }
+    };
+
+    const handleSearch = async () => {
+        if (!searchQuery.trim()) return;
+        setSearchLoading(true);
+        try {
+            const data = await debugSearch(companyId, searchQuery);
+            setSearchResults(data.results);
+        } catch (error) {
+            alert("Search failed: " + error);
+        } finally {
+            setSearchLoading(false);
         }
     };
 
@@ -342,6 +361,40 @@ export function AdminPanel() {
                         }}
                     >
                         <Key size={20} /> API Keys
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('search-debug')}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            padding: "12px 16px",
+                            borderRadius: 12,
+                            background: activeTab === 'search-debug' ? "rgba(16, 185, 129, 0.1)" : "transparent",
+                            color: activeTab === 'search-debug' ? "#34d399" : "#94a3b8",
+                            border: "1px solid",
+                            borderColor: activeTab === 'search-debug' ? "rgba(16, 185, 129, 0.2)" : "transparent",
+                            fontSize: "0.95rem",
+                            fontWeight: activeTab === 'search-debug' ? 600 : 500,
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                            textAlign: "left"
+                        }}
+                        onMouseEnter={(e) => {
+                            if (activeTab !== 'search-debug') {
+                                e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+                                e.currentTarget.style.color = "#cbd5e1";
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (activeTab !== 'search-debug') {
+                                e.currentTarget.style.background = "transparent";
+                                e.currentTarget.style.color = "#94a3b8";
+                            }
+                        }}
+                    >
+                        <Search size={20} /> Test Retrieval
                     </button>
                 </aside>
 
@@ -589,6 +642,8 @@ export function AdminPanel() {
                                                     <th style={{ textAlign: "left", padding: "12px 20px", color: "#64748b", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: 1 }}>Filename</th>
                                                     <th style={{ textAlign: "left", padding: "12px 20px", color: "#64748b", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: 1 }}>Category</th>
                                                     <th style={{ textAlign: "left", padding: "12px 20px", color: "#64748b", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: 1 }}>Status</th>
+                                                    <th style={{ textAlign: "left", padding: "12px 20px", color: "#64748b", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: 1 }}>Size</th>
+                                                    <th style={{ textAlign: "left", padding: "12px 20px", color: "#64748b", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: 1 }}>Vector Dim.</th>
                                                     <th style={{ textAlign: "left", padding: "12px 20px", color: "#64748b", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: 1 }}>Date</th>
                                                     <th style={{ textAlign: "right", padding: "12px 20px", color: "#64748b", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: 1 }}>Chunks</th>
                                                     <th style={{ textAlign: "right", padding: "12px 20px", color: "#64748b", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: 1 }}>Action</th>
@@ -635,6 +690,29 @@ export function AdminPanel() {
                                                                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "currentColor", boxShadow: `0 0 8px ${doc.status === "indexed" ? "#34d399" : "#fbbf24"}` }} />
                                                                 {doc.status}
                                                             </span>
+                                                        </td>
+                                                        <td style={{ padding: "16px 20px", color: "#94a3b8", fontSize: "0.9rem", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                                                            {doc.file_size ? (doc.file_size / 1024).toFixed(1) + " KB" : "-"}
+                                                        </td>
+                                                        <td style={{ padding: "16px 20px" }}>
+                                                            {doc.dimensions ? (
+                                                                <span style={{
+                                                                    padding: "4px 8px",
+                                                                    borderRadius: 6,
+                                                                    fontSize: "0.75rem",
+                                                                    fontWeight: 700,
+                                                                    background: doc.dimensions === 1024 ? "rgba(251, 191, 36, 0.2)" :
+                                                                        doc.dimensions === 768 ? "rgba(139, 92, 246, 0.2)" : "rgba(148, 163, 184, 0.2)",
+                                                                    color: doc.dimensions === 1024 ? "#fbbf24" :
+                                                                        doc.dimensions === 768 ? "#a78bfa" : "#94a3b8",
+                                                                    border: `1px solid ${doc.dimensions === 1024 ? "rgba(251, 191, 36, 0.3)" :
+                                                                        doc.dimensions === 768 ? "rgba(139, 92, 246, 0.3)" : "rgba(148, 163, 184, 0.3)"}`
+                                                                }}>
+                                                                    {doc.dimensions}d
+                                                                </span>
+                                                            ) : (
+                                                                <span style={{ fontSize: "0.8rem", color: "#64748b", opacity: 0.5 }}>-</span>
+                                                            )}
                                                         </td>
                                                         <td style={{ padding: "16px 20px", color: "#94a3b8", fontSize: "0.9rem" }}>
                                                             {new Date(doc.uploaded_at).toLocaleDateString()}
@@ -760,6 +838,104 @@ export function AdminPanel() {
                                     </tbody>
                                 </table>
                             )}
+                        </section>
+                    )}
+
+                    {activeTab === 'search-debug' && (
+                        <section className="glass-card" style={{ padding: 32 }}>
+                            <div style={{ marginBottom: 32 }}>
+                                <h3 style={{ fontSize: "1.25rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
+                                    <Search size={24} color="#34d399" /> Test Retrieval & Confidence Scores
+                                </h3>
+                                <p style={{ color: "#94a3b8", marginTop: 8, fontSize: "0.95rem" }}>
+                                    Simulate a user query to see which document chunks are retrieved and their vector similarity scores.
+                                </p>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 16, marginBottom: 32 }}>
+                                <input
+                                    type="text"
+                                    placeholder="Enter test query (e.g. 'What is the refund policy?')"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                    style={{
+                                        flex: 1,
+                                        padding: "16px",
+                                        borderRadius: 12,
+                                        background: "rgba(255,255,255,0.05)",
+                                        border: "1px solid rgba(255,255,255,0.1)",
+                                        color: "white",
+                                        fontSize: "1rem"
+                                    }}
+                                />
+                                <button
+                                    onClick={handleSearch}
+                                    disabled={searchLoading || !searchQuery.trim()}
+                                    className="glass-btn hover-glow-green"
+                                    style={{
+                                        padding: "0 32px",
+                                        borderRadius: 12,
+                                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                        color: "white",
+                                        fontWeight: 600,
+                                        border: "none",
+                                        cursor: searchLoading ? "not-allowed" : "pointer",
+                                        display: "flex",
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        opacity: searchLoading ? 0.7 : 1
+                                    }}
+                                >
+                                    {searchLoading ? <Loader2 className="animate-spin" /> : <Search size={20} />}
+                                    Test
+                                </button>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                {searchResults.map((result, idx) => (
+                                    <div key={idx} style={{
+                                        background: "rgba(255,255,255,0.02)",
+                                        border: "1px solid rgba(255,255,255,0.05)",
+                                        borderRadius: 12,
+                                        padding: 20,
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                                            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                                <span style={{
+                                                    fontSize: "0.85rem",
+                                                    fontWeight: 700,
+                                                    color: result.score > 0.7 ? "#34d399" : result.score > 0.5 ? "#fbbf24" : "#94a3b8",
+                                                    background: result.score > 0.7 ? "rgba(52, 211, 153, 0.1)" : result.score > 0.5 ? "rgba(251, 191, 36, 0.1)" : "rgba(148, 163, 184, 0.1)",
+                                                    padding: "4px 8px",
+                                                    borderRadius: 6,
+                                                    border: `1px solid ${result.score > 0.7 ? "rgba(52, 211, 153, 0.2)" : result.score > 0.5 ? "rgba(251, 191, 36, 0.2)" : "rgba(148, 163, 184, 0.2)"}`
+                                                }}>
+                                                    Score: {result.score.toFixed(4)}
+                                                </span>
+                                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                    <span style={{ fontSize: "0.85rem", color: "#64748b", fontFamily: "monospace" }}>
+                                                        {result.source}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span style={{ fontSize: "0.8rem", color: "#94a3b8", background: "rgba(255,255,255,0.05)", padding: "2px 8px", borderRadius: 4 }}>
+                                                {result.section}
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: "0.95rem", color: "#e2e8f0", lineHeight: 1.6 }}>
+                                            {result.text}
+                                        </div>
+                                    </div>
+                                ))}
+                                {searchResults.length === 0 && !searchLoading && searchQuery && (
+                                    <div style={{ textAlign: "center", color: "#64748b", padding: 40 }}>
+                                        No results found. Try a different query.
+                                    </div>
+                                )}
+                            </div>
                         </section>
                     )}
                 </main>

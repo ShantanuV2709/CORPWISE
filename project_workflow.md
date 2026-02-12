@@ -8,12 +8,13 @@ This document provides comprehensive visual diagrams showcasing how the CORPWISE
 
 ```mermaid
 graph TB
-    subgraph "Frontend - React TypeScript"
-        A[User Browser] --> B[RoleSelection Page]
-        B --> C[ChatWindow]
-        B --> D[AdminPanel]
-        C --> E[MessageBubble Components]
-        D --> F[Document Upload Form]
+    subgraph "Frontend - SaaS & Widget"
+        A[Client App e.g. SilaiBook] --> B[ChatWidget Embedded]
+        B --> C[MessageBubble Components]
+        
+        D[Admin Browser] --> E[SaaS Landing / Auth]
+        E --> F[AdminPanel Dashboard]
+        F --> G[Document Upload Form]
     end
     
     subgraph "API Layer - FastAPI"
@@ -42,9 +43,9 @@ graph TB
         T[SentenceTransformer Model]
     end
     
-    C -->|POST request| G
-    D -->|Upload| H
-    E -->|Feedback| I
+    B -->|POST request| G
+    F -->|Upload| H
+    C -->|Feedback| I
     
     G --> J
     H --> J
@@ -85,7 +86,8 @@ graph TB
 ```mermaid
 sequenceDiagram
     actor User
-    participant UI as ChatWindow
+    participant ClientApp as External App (SilaiBook)
+    participant UI as ChatWidget
     participant API as FastAPI Server
     participant Orch as Chat Orchestrator
     participant Intent as Intent Detector
@@ -94,9 +96,11 @@ sequenceDiagram
     participant LLM as Gemini API
     participant Mongo as MongoDB
     
+    User->>ClientApp: Opens App
+    ClientApp->>UI: Initialize (company_id="silaibook")
     User->>UI: Types question
-    UI->>UI: Generate conversationId (UUID)
-    UI->>API: POST /chat {user_id, question}
+    UI->>UI: Retrieve company_id from props
+    UI->>API: POST /chat {user_id, question, company_id}
     
     API->>API: Rate limiting check (5/min)
     API->>Orch: process_chat(user_id, question)
@@ -166,11 +170,11 @@ sequenceDiagram
     participant Mongo as MongoDB
     participant Disk as File System
     
-    Admin->>UI: Navigate to /admin
-    UI->>Auth: Show password prompt
-    Admin->>Auth: Enter password
-    Auth->>Auth: Validate (hardcoded: "admin123")
-    Auth-->>UI: Authenticated ✓
+    Admin->>UI: Navigate to /admin (SaaS Login)
+    UI->>Auth: Show Company Login
+    Admin->>Auth: Enter company_id, username, password
+    Auth->>Auth: Validate against MongoDB Companies
+    Auth-->>UI: Authenticated & Token Received ✓
     
     UI->>UI: Load document list
     UI->>API: GET /admin/documents
@@ -329,58 +333,55 @@ erDiagram
 ```mermaid
 graph LR
     subgraph "React Components"
-        A[App.tsx<br/>Router Config]
-        B[RoleSelection<br/>Landing Page]
-        C[ChatWindow<br/>User Interface]
-        D[AdminPanel<br/>Doc Management]
-        E[MessageBubble<br/>Message Display]
-        F[FeedbackButtons<br/>👍 👎]
+        A[SaaS Landing<br/>Registration/Login]
+        B[AdminPanel<br/>Doc Management]
+        C[ChatWidget<br/>Embedded Component]
+        D[MessageBubble<br/>Message Display]
+        E[FeedbackButtons<br/>👍 👎]
     end
     
     subgraph "API Clients"
-        G[chat.ts<br/>sendQuery<br/>sendFeedback]
-        H[admin.ts<br/>uploadDocument<br/>listDocuments<br/>deleteDocument]
+        F[chat.ts<br/>sendQuery<br/>sendFeedback]
+        G[admin.ts<br/>uploadDocument<br/>listDocuments]
     end
     
     subgraph "Backend Routes"
-        I[chat]
-        J[admin/documents/upload]
-        K[admin/documents]
-        L[feedback]
+        H[chat]
+        I[admin/documents/upload]
+        J[admin/documents]
+        K[feedback]
     end
     
     subgraph "Services"
-        M[chat_orchestrator.py<br/>Main RAG Logic]
-        N[document_processor.py<br/>Chunking & Indexing]
-        O[embeddings.py<br/>Vector Generation]
+        L[chat_orchestrator.py<br/>Main RAG Logic]
+        M[document_processor.py<br/>Chunking & Indexing]
+        N[embeddings.py<br/>Vector Generation]
     end
     
     A --> B
-    A --> C
-    A --> D
     
-    C --> E
     C --> F
+    C --> D
+    C --> E
+    E --> F
     
-    C --> G
-    D --> H
-    F --> G
+    B --> G
     
+    F --> H
+    F --> K
     G --> I
-    G --> L
-    H --> J
-    H --> K
+    G --> J
     
+    H --> L
     I --> M
-    J --> N
-    L --> M
+    K --> L
     
-    M --> O
-    N --> O
+    L --> N
+    M --> N
     
+    style L fill:#FF5722
     style M fill:#FF5722
     style N fill:#FF5722
-    style O fill:#FF5722
 ```
 
 ---
@@ -470,7 +471,7 @@ mindmap
       CSS Modules
     Backend
       FastAPI
-      Python 3.x
+      Python 3.9
       Uvicorn ASGI
       Pydantic
     AI/ML
@@ -478,8 +479,8 @@ mindmap
         Text Generation
         Context Understanding
       SentenceTransformers
-        multilingual-e5-large
-        1024-dim embeddings
+        all-MiniLM-L6-v2
+        384-dim embeddings
     Databases
       MongoDB
         Conversations
@@ -509,10 +510,11 @@ mindmap
 
 ```mermaid
 journey
-    title Employee Asking Question about Leave Policy
+    title Employee Asking Question (via SilaiBook)
     section Access
-      Open CORPWISE: 5: User
-      Select "I'm a User": 5: User
+      Open SilaiBook App: 5: User
+      Locate Chat Widget: 5: User
+      Open Chat: 5: User
     section Interaction
       Type "What is leave policy?": 5: User
       Click Send: 5: User
@@ -529,9 +531,9 @@ journey
 journey
     title Admin Uploading New Company Policy
     section Access
-      Open CORPWISE: 5: Admin
-      Select "I'm an Admin": 5: Admin
-      Enter password: 4: Admin
+      Open CORPWISE SaaS: 5: Admin
+      Click "Login": 5: Admin
+      Enter Company ID + Creds: 4: Admin
     section Upload
       Select policy.md file: 5: Admin
       Choose document type: 5: Admin
@@ -750,6 +752,19 @@ graph TD
     style D fill:#2196F3
     style H fill:#9C27B0
     style K fill:#607D8B
+```
+
+---
+
+## 🛤️ Roadmap
+
+```mermaid
+graph LR
+    P1[Phase 1 ✅<br/>Single-tenant RAG MVP] --> P2[Phase 2 🚧<br/>Multi-tenancy + Admin Panel] --> P3[Phase 3 🔮<br/>Billing, Public APIs, Analytics]
+
+    style P1 fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style P2 fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000
+    style P3 fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#000
 ```
 
 ---

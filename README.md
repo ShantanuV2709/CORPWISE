@@ -55,6 +55,11 @@ Ask questions, get answers instantly—just like asking a colleague.
 - **Usage Analytics:** aggregated statistics on total documents, queries, and active subscriptions
 - **Tenant Control:** Ability to suspend, activate, or delete tenant organizations and their data
 
+### Search Debugging & Observability
+- **Test Retrieval Tool:** Dedicated admin tab to simulate queries and visualize retrieved chunks with confidence scores
+- **Metadata Visibility:** View detailed document metrics including vector dimensions (e.g., 1536d) and file sizes
+- **Score Transparency:** Color-coded similarity scores help admins understand why certain answers are generated
+
 ### Multi-Tenant Architecture
 - Data Isolation: Strict separation of documents via `Company ID`
 - Dynamic Branding: The AI adapts its persona (Name, Greeting) based on the active Tenant
@@ -68,7 +73,7 @@ Ask questions, get answers instantly—just like asking a colleague.
 - Backend: Python 3.9+, FastAPI, SlowAPI
 - Authentication: JWT-based Auth (Employee & Admin scopes)
 - AI Model: Google Gemini 2.5 Flash / Pro
-- Database: MongoDB (Metadata, Users, Chats), Pinecone (Vector Search)
+- Database: MongoDB (Metadata, Users, Chats), Pinecone (Vector Search, Multi-Dimension Support)
 - Orchestration: LangChain / Custom RAG Pipeline
 
 ---

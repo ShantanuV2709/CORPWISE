@@ -8,6 +8,8 @@ export interface Document {
     uploaded_at: string;
     status: string;
     chunk_count: number;
+    dimensions?: number;
+    file_size?: number;
 }
 
 export async function uploadDocument(file: File, docType: string, companyId: string) {
@@ -113,3 +115,30 @@ export async function revokeApiKey(companyId: string, keyId: string) {
 
     return response.json();
 }
+
+export interface SearchResult {
+    score: number;
+    text: string;
+    source: string;
+    section: string;
+    doc_id: string;
+}
+
+export async function debugSearch(companyId: string, query: string): Promise<{ results: SearchResult[] }> {
+    const response = await fetch(`${API_BASE}/admin/search_debug`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-Company-ID": companyId,
+        },
+        body: JSON.stringify({ query })
+    });
+
+    if (!response.ok) {
+        throw new Error("Search failed");
+    }
+
+    return response.json();
+}
+
+
