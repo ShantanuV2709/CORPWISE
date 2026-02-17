@@ -152,7 +152,11 @@ async def delete_document(doc_id: str, request: Request):
     # Delete from Pinecone
     if doc.get("pinecone_ids"):
         try:
-            await delete_document_from_index(doc["pinecone_ids"], company_id=company_id)
+            await delete_document_from_index(
+                doc["pinecone_ids"], 
+                company_id=company_id,
+                dimensions=doc.get("dimensions", 384)
+            )
         except Exception as e:
             print(f"⚠️ Pinecone delete failed: {e}")
             # Continue to delete from DB even if Pinecone fails
@@ -327,3 +331,77 @@ async def debug_search(
     )
     
     return {"results": results}
+
+
+# ============================
+# Chat History Management
+# ============================
+@router.get("/conversations")
+async def list_company_conversations(
+    request: Request,
+    page: int = 1,
+    limit: int = 20
+):
+    """
+    Get all conversations for the authenticated company.
+    """
+    company_id = request.headers.get("X-Company-ID")
+    if not company_id:
+        return {"conversations": [], "total": 0} 
+
+    from app.db.mongodb import db
+    
+    skip = (page - 1) * limit
+    
+    # Filter by company_id
+    query = {"company_id": company_id.lower()}
+    
+    total = await db.conversations.count_documents(query)
+    cursor = db.conversations.find(query).sort("updated_at", -1).skip(skip).limit(limit)
+    conversations = await cursor.to_list(length=limit)
+    
+    # Format for frontend
+    results = []
+    for c in conversations:
+        # Safe access to messages
+        msgs = c.get("messages", [])
+        last_msg = msgs[-1]["content"] if msgs else ""
+        
+        results.append({
+            "conversation_id": c["conversation_id"],
+            "title": c.get("title", "Untitled Conversation"),
+            "updated_at": c.get("updated_at"),
+            "message_count": len(msgs),
+            "user_id": c.get("user_id", "Anonymous"),
+            "preview": last_msg[:100] + "..." if len(last_msg) > 100 else last_msg
+        })
+        
+    return {
+        "conversations": results,
+        "total": total,
+        "page": page,
+        "pages": (total // limit) + (1 if total % limit > 0 else 0)
+    }
+
+
+@router.get("/conversations/{conversation_id}")
+async def get_conversation_details(
+    conversation_id: str,
+    request: Request
+):
+    """Get full details of a specific conversation."""
+    company_id = request.headers.get("X-Company-ID")
+    if not company_id:
+        raise HTTPException(status_code=400, detail="Missing Company ID")
+    
+    from app.db.mongodb import db
+        
+    convo = await db.conversations.find_one({
+        "conversation_id": conversation_id,
+        "company_id": company_id.lower() # Security check: Must belong to company
+    }, {"_id": 0})
+    
+    if not convo:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+        
+    return convo

@@ -25,7 +25,7 @@ from app.services.embeddings import embed_text
 # =====================================================
 logger = logging.getLogger("corpwise.retrieval")
 
-CE_MIN_SCORE = 3.5
+CE_MIN_SCORE = 0.5  # Lower threshold for logits (was 3.5)
 MIN_CONTEXT_TOKENS = 120
 
 REFUSAL_MESSAGE = "I do not have sufficient internal information to answer this question."
@@ -57,18 +57,18 @@ async def semantic_search(query: str, company_id: str, top_k: int = 5):
     print(f"🌲 PINECONE RESULTS: {len(results.get('matches', []))} matches found.")
 
     chunks = []
-    MIN_SEMANTIC_SCORE = 0.75
-    MIN_UPLOADED_DOC_SCORE = 0.60  # Lower threshold for uploaded docs
+    MIN_SEMANTIC_SCORE = 0.35
+    MIN_UPLOADED_DOC_SCORE = 0.30  # Lower threshold for uploaded docs
 
     for match in results.get("matches", []):
         meta = match.get("metadata", {})
         score = match.get("score", 0)
         
-        print(f"   - Match: {meta.get('source', 'Unknown')} | Score: {score:.4f} | DocID: {meta.get('doc_id')}")
-        
         # Use lower threshold for uploaded documents
         has_doc_id = meta.get("doc_id")
         threshold = MIN_UPLOADED_DOC_SCORE if has_doc_id else MIN_SEMANTIC_SCORE
+
+        print(f"   - Match: {meta.get('source', 'Unknown')} | Score: {score:.4f} | DocID: {meta.get('doc_id')}")
 
         if score < threshold:
             continue
@@ -78,8 +78,8 @@ async def semantic_search(query: str, company_id: str, top_k: int = 5):
                 "text": meta["text"],
                 "source": meta["source"],
                 "section": meta.get("section"),
-                "doc_id": meta.get("doc_id"),  # Extract doc_id for boost detection
-                "doc_type": meta.get("doc_type"),  # Also extract doc_type
+                "doc_id": meta.get("doc_id"),
+                "doc_type": meta.get("doc_type"),
                 "score": score,
                 "type": "semantic"
             })
@@ -143,8 +143,8 @@ async def retrieve_context(query: str, company_id: str, top_k: int = 8):  # Adde
         # 🚀 BOOST: Prioritize UPLOADED documents by 400% (5x multiplier)
         has_doc_id = c.get("doc_id")
         if has_doc_id:
-            c["norm_score"] *= 5.0  
-            print(f"✨ BOOSTED (5x): {c['source']} (doc_id: {has_doc_id})")
+            c["norm_score"] *= 1.5  
+            print(f"✨ BOOSTED (1.5x): {c['source']} (doc_id: {has_doc_id})")
         else:
             print(f"📄 Regular: {c['source']} (no doc_id)")
 
@@ -227,7 +227,7 @@ def build_prompt(messages: list[dict], context: str, company_id: str = None) -> 
 
     parts = [
         f"SYSTEM: You are {assistant_name}, a friendly and professional assistant for {brand_name}.",
-        f"SYSTEM: When users greet you, welcome them to {brand_name}.",
+        # f"SYSTEM: When users greet you, welcome them to {brand_name}.", <--- REMOVED to prevent repetitive greetings
         "",
         "SYSTEM: === CRITICAL INSTRUCTION ===",
         "SYSTEM: You will receive context chunks below. Your job is to:",
@@ -394,9 +394,10 @@ async def process_chat(user_id: str, conversation_id: str, question: str, compan
 
             # 🛠️ RESTORING LEGACY FILTER LOGIC (As requested by user)
             # These filters were previously removed but user reported better performance with them.
-            chunks = filter_chunks_by_query(chunks, translated_question)
-            chunks = dominant_chunks(chunks)
-            chunks = restrict_chunks_by_intent(chunks, intent)
+            # UPDATE: Disabling again because strict intent filtering blocks valid queries like "What is CORPWISE chat?"
+            # chunks = filter_chunks_by_query(chunks, translated_question)
+            # chunks = dominant_chunks(chunks)
+            # chunks = restrict_chunks_by_intent(chunks, intent)
 
             # 🔁 rebuild context + sources after filtering
             context = "\n\n".join(compress_chunk(c["text"]) for c in chunks)

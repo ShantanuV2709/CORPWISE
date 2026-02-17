@@ -20,7 +20,8 @@ Ask questions, get answers instantly—just like asking a colleague.
 ## Key Features
 
 ### Admin & Control
-- **Intuitive Sidebar Navigation:** Seamlessly switch between Document Management, API Keys, and Retrieval Testing
+- **Intuitive Sidebar Navigation:** Seamlessly switch between Document Management, API Keys, Chat Logs, and Retrieval Testing
+- **Chat History Analysis:** Review user conversations with full transcripts to audit bot performance and improve retrieval
 - **Document Upload & Management:** Admins can upload `.md` and `.txt` files with automatic chunking and indexing
 - **User Management:** Role-based access control (Employees vs. Admins)
 - **System Monitoring:** View ingestion status and system health
@@ -46,9 +47,10 @@ Ask questions, get answers instantly—just like asking a colleague.
 - **Fluid Animations:** Smooth transitions, hover lift effects, and refined message bubbles
 - **Responsive Layout:** Fully optimized for both desktop dashboards and mobile devices
 - **Onboarding Hub:** Dedicated "Quick Start" and "Documentation" views to guide new users through widget integration and API usage
+- **Smart Tier Selection:** An interactive wizard ("Help me choose") recommends the best plan based on document volume, team size, and complexity.
 
 ### Subscription Management
-- **Tiered Access:** Built-in support for multiple subscription tiers (Free, Professional, Enterprise)
+- **Tiered Access:** Built-in support for multiple subscription tiers (Starter, Professional, Enterprise) with **tier-specific vector dimensions** (384d, 768d, 1024d) for optimized performance.
 - **Strict Usage Limits:** Robust middleware enforces query caps (e.g., 500/month) and document storage limits per tier
 - **Feature Gating:** Automatically restricts features (e.g., max documents, analytics) based on the active plan
 - **Self-Service Updates:** Admins can upgrade their organization's tier directly from the portal
@@ -65,9 +67,10 @@ Ask questions, get answers instantly—just like asking a colleague.
 - **Score Transparency:** Color-coded similarity scores help admins understand why certain answers are generated
 
 ### Multi-Tenant Architecture
-- Data Isolation: Strict separation of documents via `Company ID`
-- Dynamic Branding: The AI adapts its persona (Name, Greeting) based on the active Tenant
-- Scalable: Host thousands of companies on a single instance
+- **Data Isolation:** Strict separation of documents via `Company ID`
+- **Multi-Model Vector Support:** Automatically routes documents to the correct Pinecone index (`corpwise-384`, `corpwise-768`, etc.) based on the tenant's subscription tier.
+- **Dynamic Branding:** The AI adapts its persona (Name, Greeting) based on the active Tenant
+- **Scalable:** Host thousands of companies on a single instance
 
 ---
 

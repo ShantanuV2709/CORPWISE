@@ -106,13 +106,18 @@ class AdminSubscriptionHelpers:
         # 3. Delete all chunks associated with this company
         await db.chunks.delete_many({"company_id": company_id_lower})
         
-        # 4. Delete Pinecone namespace (all vectors for this company)
-        try:
-            index = get_index()
-            index.delete(delete_all=True, namespace=company_id_lower)
-            print(f"🗑️ DELETED: Pinecone namespace '{company_id_lower}' wiped")
-        except Exception as e:
-            print(f"⚠️ WARNING: Failed to delete Pinecone namespace '{company_id_lower}': {e}")
+        # 4. Delete Pinecone namespace (all vectors for this company) from ALL indexes
+        from app.db.pinecone_client import get_index, INDEX_NAMES
+        
+        for dim in INDEX_NAMES.keys():
+            try:
+                index = get_index(dim)
+                # Check if we can/should delete. 
+                # Ideally we check stats first, but delete_all=True on a namespace is usually safe/idempotent
+                index.delete(delete_all=True, namespace=company_id_lower)
+                print(f"🗑️ DELETED: Pinecone namespace '{company_id_lower}' wiped from {dim}-dim index")
+            except Exception as e:
+                print(f"⚠️ WARNING: Failed to delete Pinecone namespace '{company_id_lower}' from {dim}-dim index: {e}")
         
         print(f"✅ COMPANY DELETED: '{company_id}' and all associated data removed")
         return True

@@ -187,3 +187,59 @@ export async function getSubscription(companyId: string): Promise<SubscriptionDe
 
     return response.json();
 }
+
+
+// ============================
+// Chat History
+// ============================
+export interface ConversationSummary {
+    conversation_id: string;
+    title: string;
+    updated_at: string;
+    message_count: number;
+    user_id: string;
+    preview: string;
+}
+
+export interface Message {
+    role: string;
+    content: string;
+    timestamp: string;
+}
+
+export interface ConversationDetail {
+    conversation_id: string;
+    title: string;
+    updated_at: string;
+    user_id: string;
+    company_id: string;
+    messages: Message[];
+}
+
+export async function listConversations(companyId: string, page: number = 1, limit: number = 20): Promise<{ conversations: ConversationSummary[], total: number, page: number, pages: number }> {
+    const response = await fetch(`${API_BASE}/admin/conversations?page=${page}&limit=${limit}`, {
+        headers: {
+            "X-Company-ID": companyId,
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to fetch conversations");
+    }
+
+    return response.json();
+}
+
+export async function getConversationDetails(companyId: string, conversationId: string): Promise<ConversationDetail> {
+    const response = await fetch(`${API_BASE}/admin/conversations/${conversationId}`, {
+        headers: {
+            "X-Company-ID": companyId,
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to fetch conversation details");
+    }
+
+    return response.json();
+}

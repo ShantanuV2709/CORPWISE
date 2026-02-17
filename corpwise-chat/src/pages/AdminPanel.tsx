@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { AdminAuth } from "../components/AdminAuth";
 import {
     uploadDocument, listDocuments, deleteDocument, Document as AdminDocument,
-    listApiKeys, generateApiKey, revokeApiKey, ApiKey, debugSearch
+    listApiKeys, generateApiKey, revokeApiKey, ApiKey, debugSearch,
+    listConversations, getConversationDetails, ConversationSummary, ConversationDetail
 } from "../api/admin";
 import {
     Lock,
@@ -24,7 +25,9 @@ import {
     Shield,
     Plus,
     Search,
-    X
+    X,
+    MessageSquare,
+    History
 } from "lucide-react";
 
 export function AdminPanel() {
@@ -38,7 +41,7 @@ export function AdminPanel() {
     const [isDragging, setIsDragging] = useState(false);
 
     // API Key State
-    const [activeTab, setActiveTab] = useState<'documents' | 'api-keys' | 'search-debug'>('documents');
+    const [activeTab, setActiveTab] = useState<'documents' | 'api-keys' | 'search-debug' | 'chat-history'>('documents');
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
     const [generatedKey, setGeneratedKey] = useState<{ key: string, name: string } | null>(null);
     const [newKeyName, setNewKeyName] = useState("");
@@ -48,6 +51,13 @@ export function AdminPanel() {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searchLoading, setSearchLoading] = useState(false);
+
+    // Chat History State
+    const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+    const [chatPage, setChatPage] = useState(1);
+    const [totalChats, setTotalChats] = useState(0);
+    const [selectedConversation, setSelectedConversation] = useState<ConversationDetail | null>(null);
+    const [chatLoading, setChatLoading] = useState(false);
 
     const navigate = useNavigate();
 
@@ -66,6 +76,8 @@ export function AdminPanel() {
                 loadDocuments();
             } else if (activeTab === 'api-keys') {
                 loadApiKeys();
+            } else if (activeTab === 'chat-history') {
+                loadConversations();
             }
         }
     }, [isAuthenticated, activeTab]);
@@ -131,6 +143,29 @@ export function AdminPanel() {
             setDocuments(data.documents);
         } catch (error) {
             console.error("Failed to load documents:", error);
+        }
+    };
+
+    const loadConversations = async () => {
+        if (!companyId) return;
+        setChatLoading(true);
+        try {
+            const data = await listConversations(companyId, chatPage, 20);
+            setConversations(data.conversations);
+            setTotalChats(data.total);
+        } catch (error) {
+            console.error("Failed to load conversations:", error);
+        } finally {
+            setChatLoading(false);
+        }
+    };
+
+    const handleViewConversation = async (convoId: string) => {
+        try {
+            const details = await getConversationDetails(companyId, convoId);
+            setSelectedConversation(details);
+        } catch (error) {
+            alert("Failed to load details: " + error);
         }
     };
 
@@ -395,6 +430,40 @@ export function AdminPanel() {
                         }}
                     >
                         <Search size={20} /> Test Retrieval
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('chat-history')}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            padding: "12px 16px",
+                            borderRadius: 12,
+                            background: activeTab === 'chat-history' ? "rgba(139, 92, 246, 0.1)" : "transparent",
+                            color: activeTab === 'chat-history' ? "#a78bfa" : "#94a3b8",
+                            border: "1px solid",
+                            borderColor: activeTab === 'chat-history' ? "rgba(139, 92, 246, 0.2)" : "transparent",
+                            fontSize: "0.95rem",
+                            fontWeight: activeTab === 'chat-history' ? 600 : 500,
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                            textAlign: "left"
+                        }}
+                        onMouseEnter={(e) => {
+                            if (activeTab !== 'chat-history') {
+                                e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+                                e.currentTarget.style.color = "#cbd5e1";
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (activeTab !== 'chat-history') {
+                                e.currentTarget.style.background = "transparent";
+                                e.currentTarget.style.color = "#94a3b8";
+                            }
+                        }}
+                    >
+                        <MessageSquare size={20} /> Chat History
                     </button>
                 </aside>
 
@@ -779,64 +848,252 @@ export function AdminPanel() {
                                             borderRadius: 12,
                                             background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
                                             color: "white",
-                                            fontWeight: 600,
                                             border: "none",
                                             cursor: "pointer",
                                             display: "flex",
-                                            alignItems: 'center',
-                                            gap: 8
+                                            alignItems: "center",
+                                            gap: 8,
+                                            fontWeight: 600
                                         }}
                                     >
                                         <Plus size={18} /> Generate Key
                                     </button>
                                 </div>
+                                {generatedKey && (
+                                    <div style={{ marginTop: 24, padding: 20, background: "rgba(16, 185, 129, 0.1)", borderRadius: 12, border: "1px solid rgba(16, 185, 129, 0.2)" }}>
+                                        <div style={{ color: "#34d399", fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                                            <Shield size={18} /> New API Key Generated
+                                        </div>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                            <code style={{ flex: 1, background: "rgba(0,0,0,0.3)", padding: "12px", borderRadius: 8, fontFamily: "monospace", color: "white", wordBreak: "break-all" }}>
+                                                {generatedKey.key}
+                                            </code>
+                                            <button
+                                                onClick={() => { navigator.clipboard.writeText(generatedKey.key); alert("Copied!"); }}
+                                                style={{ padding: "12px", borderRadius: 8, background: "rgba(255,255,255,0.1)", border: "none", color: "white", cursor: "pointer" }}
+                                            >
+                                                Copy
+                                            </button>
+                                        </div>
+                                        <p style={{ color: "#d1fae5", fontSize: "0.85rem", marginTop: 12 }}>
+                                            ⚠️ Copy this key now. You won't be able to see it again!
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Key List */}
-                            <h4 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 16 }}>Active Keys</h4>
+                            {/* API Keys List */}
                             {apiKeys.length === 0 ? (
                                 <div style={{ textAlign: "center", padding: 40, color: "#64748b", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 12 }}>
                                     No API keys found. Generate one to get started.
                                 </div>
                             ) : (
-                                <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 8px" }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ textAlign: "left", padding: "12px", color: "#64748b", fontSize: "0.85rem" }}>Name</th>
-                                            <th style={{ textAlign: "left", padding: "12px", color: "#64748b", fontSize: "0.85rem" }}>Prefix</th>
-                                            <th style={{ textAlign: "left", padding: "12px", color: "#64748b", fontSize: "0.85rem" }}>Created</th>
-                                            <th style={{ textAlign: "right", padding: "12px", color: "#64748b", fontSize: "0.85rem" }}>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {apiKeys.map(key => (
-                                            <tr key={key.key_id} style={{ background: "rgba(255,255,255,0.02)" }}>
-                                                <td style={{ padding: "16px", borderRadius: "8px 0 0 8px", fontWeight: 500, color: "white" }}>{key.name}</td>
-                                                <td style={{ padding: "16px", fontFamily: "monospace", color: "#9ca3af" }}>{key.prefix}••••••••</td>
-                                                <td style={{ padding: "16px", color: "#94a3b8", fontSize: "0.9rem" }}>{new Date(key.created_at).toLocaleDateString()}</td>
-                                                <td style={{ padding: "16px", textAlign: "right", borderRadius: "0 8px 8px 0" }}>
-                                                    <button
-                                                        onClick={() => handleRevokeKey(key.key_id)}
-                                                        className="glass-btn"
-                                                        style={{
-                                                            padding: "8px 12px",
-                                                            borderRadius: 8,
-                                                            color: "#ef4444",
-                                                            border: "1px solid rgba(239, 68, 68, 0.2)",
-                                                            background: "rgba(239, 68, 68, 0.05)",
-                                                            cursor: "pointer",
-                                                            display: 'inline-flex',
-                                                            alignItems: 'center',
-                                                            gap: 6
-                                                        }}
-                                                    >
-                                                        <Trash2 size={16} /> Revoke
-                                                    </button>
-                                                </td>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                                    {apiKeys.map((key) => (
+                                        <div key={key.key_id} className="glass-btn" style={{
+                                            display: "flex", justifyContent: "space-between", alignItems: "center",
+                                            padding: "16px 20px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)",
+                                            background: "rgba(255,255,255,0.02)"
+                                        }}>
+                                            <div>
+                                                <div style={{ color: "white", fontWeight: 600, fontSize: "0.95rem" }}>{key.name}</div>
+                                                <div style={{ color: "#64748b", fontSize: "0.85rem", fontFamily: "monospace", marginTop: 4 }}>
+                                                    Prefix: <span style={{ color: "#cbd5e1" }}>{key.prefix}</span> • Created: {new Date(key.created_at).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                                <span style={{
+                                                    fontSize: "0.8rem",
+                                                    padding: "4px 8px",
+                                                    borderRadius: 6,
+                                                    background: key.status === "active" ? "rgba(52, 211, 153, 0.1)" : "rgba(239, 68, 68, 0.1)",
+                                                    color: key.status === "active" ? "#34d399" : "#ef4444",
+                                                    border: `1px solid ${key.status === "active" ? "rgba(52, 211, 153, 0.2)" : "rgba(239, 68, 68, 0.2)"}`
+                                                }}>
+                                                    {key.status.toUpperCase()}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleRevokeKey(key.key_id)}
+                                                    className="glass-btn"
+                                                    style={{
+                                                        padding: "8px 12px",
+                                                        borderRadius: 8,
+                                                        color: "#ef4444",
+                                                        border: "1px solid rgba(239, 68, 68, 0.2)",
+                                                        background: "rgba(239, 68, 68, 0.05)",
+                                                        cursor: "pointer",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: 6
+                                                    }}
+                                                >
+                                                    <Trash2 size={16} /> Revoke
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+                    )}
+
+                    {activeTab === 'chat-history' && (
+                        <section className="glass-card" style={{ padding: 32 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
+                                <div>
+                                    <h3 style={{ fontSize: "1.25rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
+                                        <MessageSquare size={24} color="#a78bfa" /> Chat Logs
+                                    </h3>
+                                    <p style={{ color: "#94a3b8", marginTop: 8, fontSize: "0.95rem" }}>
+                                        Review user conversations to improve retrieval and answers.
+                                    </p>
+                                </div>
+                                <button onClick={loadConversations} className="glass-btn" style={{ padding: "10px 16px", borderRadius: 8, color: "#a78bfa", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: 6 }}>
+                                    <RefreshCw size={16} /> Refresh
+                                </button>
+                            </div>
+
+                            {chatLoading && conversations.length === 0 ? (
+                                <div style={{ textAlign: "center", padding: 80, color: "#64748b" }}>
+                                    <Loader2 className="animate-spin" size={32} />
+                                    <div style={{ marginTop: 16 }}>Loading history...</div>
+                                </div>
+                            ) : conversations.length === 0 ? (
+                                <div style={{ textAlign: "center", padding: 80, color: "#64748b", border: "2px dashed rgba(255,255,255,0.05)", borderRadius: 16 }}>
+                                    <div style={{ marginBottom: 16, opacity: 0.3, display: 'flex', justifyContent: 'center' }}>
+                                        <History size={64} />
+                                    </div>
+                                    <div style={{ fontSize: "1.1rem", marginBottom: 8, color: "#94a3b8" }}>No conversations yet</div>
+                                    <div style={{ fontSize: "0.9rem", opacity: 0.7 }}>Start chatting with the bot to see logs here.</div>
+                                </div>
+                            ) : (
+                                <div style={{ overflowX: "auto" }}>
+                                    <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 8px" }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ textAlign: "left", padding: "12px", color: "#64748b", fontSize: "0.85rem" }}>Conversation</th>
+                                                <th style={{ textAlign: "center", padding: "12px", color: "#64748b", fontSize: "0.85rem" }}>Msgs</th>
+                                                <th style={{ textAlign: "left", padding: "12px", color: "#64748b", fontSize: "0.85rem" }}>Last Activity</th>
+                                                <th style={{ textAlign: "left", padding: "12px", color: "#64748b", fontSize: "0.85rem" }}>Preview</th>
+                                                <th style={{ textAlign: "right", padding: "12px", color: "#64748b", fontSize: "0.85rem" }}>Action</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {conversations.map((convo) => (
+                                                <tr key={convo.conversation_id} style={{ background: "rgba(255,255,255,0.02)", transition: "all 0.2s" }} className="hover-glass-row">
+                                                    <td style={{ padding: "16px", borderRadius: "8px 0 0 8px", color: "white", fontWeight: 500 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, background: "rgba(167, 139, 250, 0.1)", borderRadius: 6 }}>
+                                                                <MessageSquare size={14} color="#a78bfa" />
+                                                            </div>
+                                                            <div style={{ display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" }}>
+                                                                <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "200px", lineHeight: "1.2" }}>
+                                                                    {convo.title || "Untitled"}
+                                                                </span>
+                                                                <span style={{ fontSize: "0.7rem", color: "#64748b", fontFamily: "monospace", lineHeight: "1" }}>#{convo.conversation_id.slice(0, 6)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: "16px", textAlign: "center" }}>
+                                                        <span style={{ padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.05)", fontSize: "0.8rem", color: "#cbd5e1" }}>
+                                                            {convo.message_count}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: "16px", color: "#94a3b8", fontSize: "0.9rem" }}>
+                                                        {new Date(convo.updated_at).toLocaleDateString()} <span style={{ fontSize: "0.8rem", color: "#64748b" }}>{new Date(convo.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </td>
+                                                    <td style={{ padding: "16px", color: "#94a3b8", fontSize: "0.9rem", maxWidth: "300px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                        {convo.preview}
+                                                    </td>
+                                                    <td style={{ padding: "16px", textAlign: "right", borderRadius: "0 8px 8px 0" }}>
+                                                        <button
+                                                            onClick={() => handleViewConversation(convo.conversation_id)}
+                                                            className="glass-btn"
+                                                            style={{
+                                                                padding: "6px 12px",
+                                                                borderRadius: 8,
+                                                                color: "#a78bfa",
+                                                                border: "1px solid rgba(167, 139, 250, 0.2)",
+                                                                background: "rgba(167, 139, 250, 0.05)",
+                                                                cursor: "pointer",
+                                                                fontSize: "0.85rem"
+                                                            }}
+                                                        >
+                                                            View
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+
+                                    {/* Pagination (Simple) */}
+                                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24, gap: 12 }}>
+                                        <button
+                                            disabled={chatPage === 1}
+                                            onClick={() => { setChatPage(p => p - 1); loadConversations(); }}
+                                            style={{ padding: "8px 16px", background: "rgba(255,255,255,0.05)", border: "none", borderRadius: 8, color: "white", cursor: "pointer", opacity: chatPage === 1 ? 0.5 : 1 }}
+                                        >
+                                            Previous
+                                        </button>
+                                        <span style={{ padding: "8px 12px", color: "#94a3b8" }}>Page {chatPage}</span>
+                                        <button
+                                            disabled={conversations.length < 20}
+                                            onClick={() => { setChatPage(p => p + 1); loadConversations(); }}
+                                            style={{ padding: "8px 16px", background: "rgba(255,255,255,0.05)", border: "none", borderRadius: 8, color: "white", cursor: "pointer", opacity: conversations.length < 20 ? 0.5 : 1 }}
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Conversation Detail Overlay */}
+                            {selectedConversation && (
+                                <div style={{
+                                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                                    background: "rgba(0,0,0,0.8)", backdropFilter: "blur(4px)",
+                                    zIndex: 50, display: "flex", justifyContent: "center", alignItems: "center"
+                                }}>
+                                    <div style={{
+                                        width: "600px", maxWidth: "95%", height: "80vh",
+                                        background: "#0f172a", borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)",
+                                        display: "flex", flexDirection: "column", boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
+                                    }}>
+                                        {/* Header */}
+                                        <div style={{ padding: "20px 24px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                            <div>
+                                                <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "white" }}>Conversation Details</h3>
+                                                <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>ID: {selectedConversation.conversation_id}</div>
+                                            </div>
+                                            <button onClick={() => setSelectedConversation(null)} style={{ background: "transparent", border: "none", color: "white", cursor: "pointer" }}>
+                                                <X size={24} />
+                                            </button>
+                                        </div>
+
+                                        {/* Messages */}
+                                        <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: 20 }}>
+                                            {selectedConversation.messages.map((msg, idx) => (
+                                                <div key={idx} style={{
+                                                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                                                    maxWidth: "80%"
+                                                }}>
+                                                    <div style={{
+                                                        background: msg.role === 'user' ? "rgba(139, 92, 246, 0.2)" : "rgba(255,255,255,0.05)",
+                                                        padding: "12px 16px", borderRadius: 12,
+                                                        border: `1px solid ${msg.role === 'user' ? "rgba(139, 92, 246, 0.2)" : "rgba(255,255,255,0.05)"}`,
+                                                        color: "white", fontSize: "0.95rem", lineHeight: 1.5
+                                                    }}>
+                                                        {msg.content}
+                                                    </div>
+                                                    <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: 4, textAlign: msg.role === 'user' ? 'right' : 'left' }}>
+                                                        {msg.role.toUpperCase()} • {new Date(msg.timestamp).toLocaleTimeString()}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                         </section>
                     )}
@@ -949,88 +1206,90 @@ export function AdminPanel() {
             </div>
 
             {/* New Key Modal */}
-            {showKeyModal && generatedKey && (
-                <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(0,0,0,0.8)',
-                    backdropFilter: 'blur(4px)',
-                    zIndex: 100,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 20
-                }}>
+            {
+                showKeyModal && generatedKey && (
                     <div style={{
-                        background: '#1a1a1a',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 16,
-                        padding: 32,
-                        maxWidth: 500,
-                        width: '100%',
-                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0,0,0,0.8)',
+                        backdropFilter: 'blur(4px)',
+                        zIndex: 100,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 20
                     }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white' }}>API Key Generated</h3>
-                            <button onClick={() => setShowKeyModal(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div style={{ background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.2)', padding: 16, borderRadius: 8, marginBottom: 24, color: '#facc15', fontSize: '0.9rem' }}>
-                            <strong>Important:</strong> Copy this key now. You won't be able to see it again!
-                        </div>
-
-                        <div style={{ marginBottom: 24 }}>
-                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.9rem', marginBottom: 8 }}>Your API Key</label>
-                            <div style={{
-                                display: 'flex',
-                                background: 'black',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: 8,
-                                padding: 4,
-                                alignItems: 'center'
-                            }}>
-                                <code style={{ flex: 1, padding: 12, color: '#60a5fa', fontFamily: 'monospace', fontSize: '1rem', overflowX: 'auto' }}>
-                                    {generatedKey.key}
-                                </code>
-                                <button
-                                    onClick={() => copyToClipboard(generatedKey.key)}
-                                    style={{
-                                        padding: 12,
-                                        background: 'rgba(255,255,255,0.1)',
-                                        border: 'none',
-                                        borderRadius: 6,
-                                        color: 'white',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8
-                                    }}
-                                >
-                                    <Copy size={16} /> Copy
+                        <div style={{
+                            background: '#1a1a1a',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: 16,
+                            padding: 32,
+                            maxWidth: 500,
+                            width: '100%',
+                            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white' }}>API Key Generated</h3>
+                                <button onClick={() => setShowKeyModal(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+                                    <X size={24} />
                                 </button>
                             </div>
-                        </div>
 
-                        <button
-                            onClick={() => setShowKeyModal(false)}
-                            style={{
-                                width: '100%',
-                                padding: 14,
-                                background: '#3b82f6',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: 12,
-                                fontWeight: 600,
-                                cursor: 'pointer'
-                            }}
-                        >
-                            Done
-                        </button>
+                            <div style={{ background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.2)', padding: 16, borderRadius: 8, marginBottom: 24, color: '#facc15', fontSize: '0.9rem' }}>
+                                <strong>Important:</strong> Copy this key now. You won't be able to see it again!
+                            </div>
+
+                            <div style={{ marginBottom: 24 }}>
+                                <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.9rem', marginBottom: 8 }}>Your API Key</label>
+                                <div style={{
+                                    display: 'flex',
+                                    background: 'black',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: 8,
+                                    padding: 4,
+                                    alignItems: 'center'
+                                }}>
+                                    <code style={{ flex: 1, padding: 12, color: '#60a5fa', fontFamily: 'monospace', fontSize: '1rem', overflowX: 'auto' }}>
+                                        {generatedKey.key}
+                                    </code>
+                                    <button
+                                        onClick={() => copyToClipboard(generatedKey.key)}
+                                        style={{
+                                            padding: 12,
+                                            background: 'rgba(255,255,255,0.1)',
+                                            border: 'none',
+                                            borderRadius: 6,
+                                            color: 'white',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8
+                                        }}
+                                    >
+                                        <Copy size={16} /> Copy
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setShowKeyModal(false)}
+                                style={{
+                                    width: '100%',
+                                    padding: 14,
+                                    background: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Done
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

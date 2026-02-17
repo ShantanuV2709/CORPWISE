@@ -221,12 +221,17 @@ async def process_and_index_document(
     }
 
 
-async def delete_document_from_index(pinecone_ids: List[str], company_id: str = None):
+async def delete_document_from_index(pinecone_ids: List[str], company_id: str = None, dimensions: int = 384):
     """Remove document chunks from Pinecone."""
     if not pinecone_ids:
         return
     
     namespace = company_id if company_id else ""
     
-    index = get_index()
-    index.delete(ids=pinecone_ids, namespace=namespace)
+    # Get the correct index for the document's dimensions
+    index = get_index(dimensions)
+    try:
+        index.delete(ids=pinecone_ids, namespace=namespace)
+        print(f"🗑️ Deleted {len(pinecone_ids)} vectors from {dimensions}-dim index (namespace: {namespace})")
+    except Exception as e:
+        print(f"⚠️ Failed to delete from Pinecone ({dimensions}-dim): {e}")

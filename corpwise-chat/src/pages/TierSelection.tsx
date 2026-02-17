@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, Sparkles, Lightbulb, Database, Key, Users, ArrowLeft, BookOpen, Terminal, Copy, ExternalLink, ChevronRight } from 'lucide-react';
+import { Target, Sparkles, Lightbulb, Database, Key, Users, ArrowLeft, BookOpen, Terminal, Copy, ExternalLink, ChevronRight, FileText, Search } from 'lucide-react';
 import { TierCard } from '../components/TierCard';
 import { OnboardingStepper } from '../components/OnboardingStepper';
 import { fetchSubscriptionTiers, updateSubscriptionTier, type SubscriptionTier } from '../api/subscription';
@@ -434,6 +434,56 @@ export function TierSelection() {
                                             <div className="usage-title">
                                                 <Sparkles size={20} color="#fbbf24" />
                                                 <span>Usage Statistics</span>
+                                            </div>
+
+                                            {/* Documents Usage */}
+                                            <div className="usage-item">
+                                                <div className="usage-header">
+                                                    <span>
+                                                        <FileText size={14} style={{ marginRight: 6, opacity: 0.7 }} />
+                                                        Documents
+                                                    </span>
+                                                    <span>
+                                                        <span style={{ color: '#fff', fontWeight: 600 }}>{currentSub.usage.documents_count || 0}</span>
+                                                        <span className="usage-limit"> / {currentSub.usage.max_documents === -1 ? '∞' : currentSub.usage.max_documents}</span>
+                                                    </span>
+                                                </div>
+                                                <div className="progress-bar-bg">
+                                                    <div
+                                                        className="progress-bar-fill"
+                                                        style={{
+                                                            width: `${currentSub.usage.max_documents === -1
+                                                                ? 5 // Just a small blip for unlimited
+                                                                : Math.min(((currentSub.usage.documents_count || 0) / currentSub.usage.max_documents) * 100, 100)}%`,
+                                                            background: 'linear-gradient(90deg, #3b82f6, #60a5fa)'
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Queries Usage */}
+                                            <div className="usage-item">
+                                                <div className="usage-header">
+                                                    <span>
+                                                        <Search size={14} style={{ marginRight: 6, opacity: 0.7 }} />
+                                                        Monthly Queries
+                                                    </span>
+                                                    <span>
+                                                        <span style={{ color: '#fff', fontWeight: 600 }}>{currentSub.usage.queries_this_month || 0}</span>
+                                                        <span className="usage-limit"> / {currentSub.usage.max_queries === -1 ? '∞' : currentSub.usage.max_queries}</span>
+                                                    </span>
+                                                </div>
+                                                <div className="progress-bar-bg">
+                                                    <div
+                                                        className="progress-bar-fill"
+                                                        style={{
+                                                            width: `${currentSub.usage.max_queries === -1
+                                                                ? 5
+                                                                : Math.min(((currentSub.usage.queries_this_month || 0) / currentSub.usage.max_queries) * 100, 100)}%`,
+                                                            background: 'linear-gradient(90deg, #10b981, #34d399)'
+                                                        }}
+                                                    />
+                                                </div>
                                             </div>
 
                                             {/* Storage Usage */}
