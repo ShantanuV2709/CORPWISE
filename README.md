@@ -253,7 +253,7 @@ CORPWISE uses Retrieval Augmented Generation (RAG) to provide accurate, context-
 3. Context Retrieval: The most relevant document chunks are retrieved and ranked
 4. Answer Generation: Google Gemini generates a response using the retrieved context
 5. Source Attribution: The system provides links to source documents for verification
-6. Intelligent Routing: Existing users via Google Auth bypass the onboarding flow directly to standard interfaces
+
 
 ---
 
