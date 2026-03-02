@@ -1,4 +1,4 @@
-.tier-selection-page {
+﻿.tier-selection-page {
     height: 100vh;
     /* Fixed height to match screen */
     width: 100vw;
@@ -74,8 +74,8 @@
 
 .side-panel-item.active {
     background: rgba(96, 165, 250, 0.1);
-    color: #60a5fa;
-    border-left: 2px solid #60a5fa;
+    color: rgba(255,255,255,0.75);
+    border-left: 2px solid rgba(255,255,255,0.75);
     padding-left: 10px;
 }
 
@@ -119,7 +119,7 @@
 .header-btn-secondary {
     background: linear-gradient(135deg, rgba(96, 165, 250, 0.15) 0%, rgba(96, 165, 250, 0.05) 100%);
     border-color: rgba(96, 165, 250, 0.4);
-    color: #60a5fa;
+    color: rgba(255,255,255,0.75);
 }
 
 .header-btn-secondary:hover {
@@ -131,14 +131,14 @@
 
 /* Primary Button (Get Started) - solid gradient like tier-select-btn.selected */
 .header-btn-primary {
-    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-    border-color: #3b82f6;
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%);
+    border-color: #e2e8f0;
     color: #fff;
     box-shadow: 0 4px 15px rgba(96, 165, 250, 0.3);
 }
 
 .header-btn-primary:hover {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    background: linear-gradient(135deg, #e2e8f0 0%, #c1c9d4 100%);
     box-shadow: 0 6px 25px rgba(96, 165, 250, 0.4);
     transform: translateY(-1px);
 }
@@ -238,7 +238,7 @@
 }
 
 .recommendation-icon {
-    color: #60a5fa;
+    color: rgba(255,255,255,0.75);
     flex-shrink: 0;
 }
 
@@ -248,7 +248,7 @@
 }
 
 .recommendation-text strong {
-    color: #60a5fa;
+    color: rgba(255,255,255,0.75);
     font-weight: 700;
 }
 
@@ -270,10 +270,19 @@
 }
 
 .tier-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 32px;
-    justify-items: center;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 24px;
+    justify-content: center;
+    align-items: stretch;
+    overflow-x: auto;
+}
+
+.tier-grid>* {
+    flex: 1 1 0;
+    min-width: 280px;
+    max-width: 380px;
 }
 
 @media (max-width: 1024px) {
@@ -374,7 +383,7 @@
 .auth-modal-selected-tier {
     display: inline-block;
     font-size: 0.85rem;
-    color: #60a5fa;
+    color: rgba(255,255,255,0.75);
     background: rgba(96, 165, 250, 0.1);
     border: 1px solid rgba(96, 165, 250, 0.2);
     padding: 4px 12px;
@@ -432,7 +441,7 @@
 }
 
 .auth-input:focus {
-    border-color: #60a5fa;
+    border-color: rgba(255,255,255,0.75);
     background: rgba(0, 0, 0, 0.5);
     box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
 }
@@ -440,7 +449,7 @@
 .auth-btn-primary {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%);
     border: none;
     border-radius: 12px;
     color: #fff;

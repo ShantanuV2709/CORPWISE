@@ -12,6 +12,8 @@ from pydantic import BaseModel
 from app.models.document import DocumentModel
 from app.services.document_processor import process_and_index_document, delete_document_from_index
 from app.core.usage_middleware import check_usage_limits
+from app.core.security import get_current_admin
+from fastapi import Depends
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -31,15 +33,16 @@ class UploadResponse(BaseModel):
 async def upload_document(
     request: Request, # Added request to get headers
     file: UploadFile = File(...),
-    doc_type: str = "general"
+    doc_type: str = "general",
+    current_admin: dict = Depends(get_current_admin)
 ):
     """
     Upload and process a document.
     
     Supported formats: .md, .txt
     """
-    # Extract Company ID
-    company_id = request.headers.get("X-Company-ID", None)
+    # Extract Company ID securely from token
+    company_id = current_admin["company_id"]
     
     # Check document upload limit
     if company_id:
@@ -125,9 +128,12 @@ async def upload_document(
 
 
 @router.get("/documents")
-async def list_documents(request: Request):
+async def list_documents(
+    request: Request,
+    current_admin: dict = Depends(get_current_admin)
+):
     """Get all uploaded documents, strictly filtered by Company ID."""
-    company_id = request.headers.get("X-Company-ID", None)
+    company_id = current_admin["company_id"]
     
     if not company_id:
         # STRICT ISOLATION: Do not return any documents if company ID is undefined
@@ -138,9 +144,13 @@ async def list_documents(request: Request):
 
 
 @router.delete("/documents/{doc_id}")
-async def delete_document(doc_id: str, request: Request):
+async def delete_document(
+    doc_id: str, 
+    request: Request,
+    current_admin: dict = Depends(get_current_admin)
+):
     """Delete a document and remove from Pinecone."""
-    company_id = request.headers.get("X-Company-ID", None)
+    company_id = current_admin["company_id"]
 
     # Get document (scoped to company)
     doc = await DocumentModel.get_by_id(doc_id, company_id=company_id)
@@ -177,6 +187,11 @@ async def delete_document(doc_id: str, request: Request):
     # Delete from MongoDB (scoped)
     await DocumentModel.delete(doc_id, company_id=company_id)
     
+    # Decrement document count for the company
+    if company_id:
+        from app.models.admin_helpers import AdminSubscriptionHelpers
+        await AdminSubscriptionHelpers.increment_document_count(company_id, -1)
+    
     return {"message": f"Document {doc['filename']} deleted successfully"}
 
 
@@ -189,12 +204,13 @@ class UpdateSubscriptionRequest(BaseModel):
 @router.put("/subscription")
 async def update_my_subscription(
     payload: UpdateSubscriptionRequest,
-    request: Request
+    request: Request,
+    current_admin: dict = Depends(get_current_admin)
 ):
     """
     Update the calling admin's subscription tier.
     """
-    company_id = request.headers.get("X-Company-ID")
+    company_id = current_admin["company_id"]
     if not company_id:
         raise HTTPException(status_code=400, detail="Missing Company ID header")
         
@@ -221,11 +237,14 @@ async def update_my_subscription(
 
 
 @router.get("/subscription")
-async def get_my_subscription(request: Request):
+async def get_my_subscription(
+    request: Request,
+    current_admin: dict = Depends(get_current_admin)
+):
     """
     Get the calling admin's subscription details and usage stats.
     """
-    company_id = request.headers.get("X-Company-ID")
+    company_id = current_admin["company_id"]
     if not company_id:
         raise HTTPException(status_code=400, detail="Missing Company ID header")
         
@@ -313,12 +332,13 @@ class SearchDebugRequest(BaseModel):
 @router.post("/search_debug")
 async def debug_search(
     payload: SearchDebugRequest,
-    request: Request
+    request: Request,
+    current_admin: dict = Depends(get_current_admin)
 ):
     """
     Test retrieval to see semantic scores and matched chunks.
     """
-    company_id = request.headers.get("X-Company-ID")
+    company_id = current_admin["company_id"]
     if not company_id:
         raise HTTPException(status_code=400, detail="Missing Company ID header")
         
@@ -340,12 +360,13 @@ async def debug_search(
 async def list_company_conversations(
     request: Request,
     page: int = 1,
-    limit: int = 20
+    limit: int = 20,
+    current_admin: dict = Depends(get_current_admin)
 ):
     """
     Get all conversations for the authenticated company.
     """
-    company_id = request.headers.get("X-Company-ID")
+    company_id = current_admin["company_id"]
     if not company_id:
         return {"conversations": [], "total": 0} 
 
@@ -387,10 +408,11 @@ async def list_company_conversations(
 @router.get("/conversations/{conversation_id}")
 async def get_conversation_details(
     conversation_id: str,
-    request: Request
+    request: Request,
+    current_admin: dict = Depends(get_current_admin)
 ):
     """Get full details of a specific conversation."""
-    company_id = request.headers.get("X-Company-ID")
+    company_id = current_admin["company_id"]
     if not company_id:
         raise HTTPException(status_code=400, detail="Missing Company ID")
     

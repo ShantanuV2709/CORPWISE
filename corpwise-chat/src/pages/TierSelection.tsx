@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Target, Sparkles, Lightbulb, Database, Key, Users, ArrowLeft, BookOpen, Terminal, Copy, ExternalLink, ChevronRight, FileText, Search } from 'lucide-react';
 import { TierCard } from '../components/TierCard';
 import { OnboardingStepper } from '../components/OnboardingStepper';
 import { fetchSubscriptionTiers, updateSubscriptionTier, type SubscriptionTier } from '../api/subscription';
-import { adminSignup, adminLogin } from '../api/auth';
+import { adminLogin } from '../api/auth';
 import { getSubscription, type SubscriptionDetails } from '../api/admin';
+import { AuthSheet } from '../components/AuthSheet';
 import './TierSelection.css';
 
 
@@ -22,12 +23,9 @@ export function TierSelection() {
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
 
-    // Form states
-    const [companyName, setCompanyName] = useState('');
+    // companyId is kept for tier-update logic when already logged in
     const [companyId, setCompanyId] = useState('');
-    const [adminUsername, setAdminUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+    // Only loading state needed for tier updates when already logged in
     const [loading, setLoading] = useState(false);
 
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -117,68 +115,6 @@ export function TierSelection() {
             const tierSection = document.querySelector('.tier-grid');
             tierSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
-    };
-
-    const handleAuthSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-
-        try {
-            let userCompanyId = companyId;
-
-            if (authMode === 'register') {
-                // Allow registration without selectedTierId
-                // Default to 'professional' if null, or maybe 'free' if your backend supports it?
-                // For now we'll pass the selected tier OR undefined/null to let backend handle default (which is professional)
-                const tierToRegister = selectedTierId || "professional"; // Fallback to professional as per API default
-
-                const data = await adminSignup(adminUsername, password, companyId, tierToRegister);
-                userCompanyId = data.company_id;
-
-                setSuccessMessage(`Welcome to CORPWISE! Account created.`);
-            } else {
-                const data = await adminLogin(adminUsername, password, companyId);
-                userCompanyId = data.company_id;
-
-                if (selectedTierId && data.subscription_tier && data.subscription_tier !== selectedTierId) {
-                    try {
-                        // Auto-update tier if selected and different
-                        await updateSubscriptionTier(selectedTierId, userCompanyId);
-                        setSuccessMessage(`Welcome back! Your plan has been updated to ${tiers[selectedTierId]?.name}.`);
-                    } catch (updateErr) {
-                        console.error("Failed to update tier:", updateErr);
-                        setSuccessMessage(`Welcome back! You are currently on the ${data.subscription_tier} plan.`);
-                    }
-                } else {
-                    setSuccessMessage(`Welcome back!`);
-                }
-            }
-
-            localStorage.setItem('admin_company_id', userCompanyId);
-            setIsLoggedIn(true);
-            setShowAuthModal(false);
-            setShowSuccessModal(true);
-
-            // Access check: only redirect if they have a plan selected or we want to force them to dashboard
-            // User said: "let them select after registering".
-            // So if they just registered (no tier selected originally), maybe we keep them here?
-            if (selectedTierId) {
-                setTimeout(() => {
-                    navigate('/admin');
-                }, 2000);
-            } else {
-                // Just close modal (already done) and let them stay
-                setTimeout(() => {
-                    setShowSuccessModal(false);
-                }, 2000);
-            }
-
-        } catch (err: any) {
-            setError(err.message || 'Authentication failed');
-        } finally {
-            setLoading(false);
-        }
     };
 
     const openAuthModal = (mode: 'register' | 'login') => {
@@ -619,10 +555,10 @@ export function TierSelection() {
                                                 ]}
                                                 behindGlowColor={
                                                     tierId === 'enterprise'
-                                                        ? 'rgba(167, 139, 250, 0.67)'
+                                                        ? 'rgba(255, 255, 255, 0.67)'
                                                         : tierId === 'professional'
                                                             ? 'rgba(16, 185, 129, 0.67)'
-                                                            : 'rgba(59, 130, 246, 0.67)'
+                                                            : 'rgba(255, 255, 255, 0.67)'
                                                 }
                                             />
                                         );
@@ -675,10 +611,10 @@ export function TierSelection() {
                                             ]}
                                             behindGlowColor={
                                                 tierId === 'enterprise'
-                                                    ? 'rgba(167, 139, 250, 0.67)'
+                                                    ? 'rgba(255, 255, 255, 0.67)'
                                                     : tierId === 'professional'
                                                         ? 'rgba(16, 185, 129, 0.67)'
-                                                        : 'rgba(59, 130, 246, 0.67)'
+                                                        : 'rgba(255, 255, 255, 0.67)'
                                             }
                                         />
                                     ))}
@@ -755,7 +691,7 @@ export function TierSelection() {
                             {/* Step 2 */}
                             <div className="tier-card" style={{ padding: 32, height: 'auto', background: 'rgba(255, 255, 255, 0.03)' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
-                                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(167, 139, 250, 0.2)', color: '#a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', marginRight: 16 }}>2</div>
+                                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.2)', color: '#a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', marginRight: 16 }}>2</div>
                                     <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#fff', margin: 0 }}>Embed the Widget</h3>
                                 </div>
                                 <p style={{ color: 'rgba(255, 255, 255, 0.7)', marginBottom: 20, lineHeight: 1.6 }}>
@@ -816,120 +752,30 @@ export function TierSelection() {
                 )}
             </div>
 
-            {/* Auth Modal */}
-            {
-                showAuthModal && (
-                    <div className="auth-modal-overlay" onClick={() => setShowAuthModal(false)}>
-                        <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
-                            <div className="auth-modal-header">
-                                <h2 className="auth-modal-title">
-                                    {authMode === 'register' ? 'Create Your Account' : 'Welcome Back'}
-                                </h2>
-                                {selectedTierId && authMode === 'register' && (
-                                    <div className="auth-modal-selected-tier">
-                                        {tiers[selectedTierId]?.name} Plan Selected
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Toggle Register/Login */}
-                            <div className="auth-toggle">
-                                <button
-                                    className={`auth-toggle-btn ${authMode === 'register' ? 'active' : ''}`}
-                                    onClick={() => setAuthMode('register')}
-                                >
-                                    Register
-                                </button>
-                                <button
-                                    className={`auth-toggle-btn ${authMode === 'login' ? 'active' : ''}`}
-                                    onClick={() => setAuthMode('login')}
-                                >
-                                    Login
-                                </button>
-                            </div>
-
-                            {error && (
-                                <div style={{
-                                    padding: '12px',
-                                    background: 'rgba(239, 68, 68, 0.1)',
-                                    border: '1px solid rgba(239, 68, 68, 0.2)',
-                                    color: '#ef4444',
-                                    borderRadius: '8px',
-                                    marginBottom: '20px',
-                                    fontSize: '0.9rem'
-                                }}>
-                                    {error}
-                                </div>
-                            )}
-
-                            <form onSubmit={handleAuthSubmit}>
-                                {authMode === 'register' && (
-                                    <input
-                                        type="text"
-                                        placeholder="Company Name (e.g. Acme Corp)"
-                                        value={companyName}
-                                        onChange={(e) => setCompanyName(e.target.value)}
-                                        className="auth-input"
-                                        style={{ marginBottom: '16px' }}
-                                    />
-                                )}
-
-                                <input
-                                    type="text"
-                                    placeholder="Workspace ID (e.g. acmecorp)"
-                                    value={companyId}
-                                    onChange={(e) => setCompanyId(e.target.value.toLowerCase())}
-                                    className="auth-input"
-                                    required
-                                    pattern="^[a-z0-9\-]+$"
-                                    title="Alphanumeric characters only"
-                                    style={{ marginBottom: '16px' }}
-                                />
-
-                                <input
-                                    type="text"
-                                    placeholder="Admin Username"
-                                    value={adminUsername}
-                                    onChange={(e) => setAdminUsername(e.target.value)}
-                                    className="auth-input"
-                                    required
-                                    style={{ marginBottom: '16px' }}
-                                />
-
-                                <input
-                                    type="password"
-                                    placeholder="Password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="auth-input"
-                                    required
-                                    minLength={6}
-                                    style={{ marginBottom: '24px' }}
-                                />
-
-                                <button
-                                    type="submit"
-                                    className="auth-btn-primary"
-                                    disabled={loading}
-                                    style={{ width: '100%' }}
-                                >
-                                    {loading
-                                        ? (authMode === 'register' ? 'Creating Account...' : 'Logging in...')
-                                        : (authMode === 'register' ? 'Create Account' : 'Login')
-                                    }
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                )
-            }
+            {/* Unified Auth Sheet */}
+            <AuthSheet
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                defaultMode={authMode}
+                selectedTierId={selectedTierId}
+                onAuthenticated={(companyId) => {
+                    localStorage.setItem('admin_company_id', companyId);
+                    setIsLoggedIn(true);
+                    setShowAuthModal(false);
+                    setSuccessMessage('Welcome to CORPWISE!');
+                    setShowSuccessModal(true);
+                    setTimeout(() => {
+                        window.location.href = '/admin/overview';
+                    }, 2000);
+                }}
+            />
 
             {/* Success Modal */}
             {
                 showSuccessModal && (
                     <div className="auth-modal-overlay">
                         <div className="glass-card" style={{ padding: '40px', textAlign: 'center', maxWidth: '400px' }}>
-                            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🎉</div>
+                            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>ðŸŽ‰</div>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white', marginBottom: '12px' }}>Success!</h2>
                             <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '24px', lineHeight: '1.5' }}>
                                 {successMessage}

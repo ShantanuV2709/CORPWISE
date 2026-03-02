@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Message } from "../types/chat";
 
 // Custom formatter to handle simple Markdown (Bold, Lists, Code)
@@ -95,13 +95,13 @@ function formatMessage(content: string) {
   return <div className="markdown-content">{elements}</div>;
 }
 
-export function MessageBubble({
+export const MessageBubble = React.memo(({
   message,
   conversationId
 }: {
   message: Message;
   conversationId: string;
-}) {
+}) => {
   const isUser = message.role === "user";
   const confidence = message.meta?.confidence || "low";
   const [showSources, setShowSources] = React.useState(false);
@@ -134,8 +134,8 @@ export function MessageBubble({
                   style={{
                     padding: "4px 12px",
                     borderRadius: 99,
-                    background: "rgba(59, 130, 246, 0.15)", // Blue tint like 'status'
-                    border: "1px solid rgba(59, 130, 246, 0.3)",
+                    background: "rgba(255, 255, 255, 0.15)", // Blue tint like 'status'
+                    border: "1px solid rgba(255, 255, 255, 0.3)",
                     color: "#93c5fd",
                     fontSize: "0.75rem",
                     fontWeight: 600,
@@ -147,7 +147,7 @@ export function MessageBubble({
                   }}
                   title="Click to view sources"
                 >
-                  <span style={{ fontSize: "1rem" }}>📄</span>
+                  <span style={{ fontSize: "1rem" }}>ðŸ“„</span>
                   {message.meta.sources.length} Sources
                   <span style={{
                     fontSize: "0.7rem",
@@ -183,7 +183,7 @@ export function MessageBubble({
                         }}
                         onClick={(e) => e.preventDefault()}
                       >
-                        📄 {src.split("/").pop()}
+                        ðŸ“„ {src.split("/").pop()}
                       </a>
                     ))}
                   </div>
@@ -200,4 +200,4 @@ export function MessageBubble({
       </div>
     </div>
   );
-}
+});

@@ -1,6 +1,7 @@
 from datetime import datetime
 from collections import Counter
 import logging
+import asyncio
 
 from app.services.intent import detect_intent
 from app.services.system_answers import get_system_answer
@@ -47,7 +48,8 @@ async def semantic_search(query: str, company_id: str, top_k: int = 5):
     
     print(f"🌲 PINECONE QUERY | Namespace: '{namespace}' | Top_K: {top_k} | Query: '{query}'")
 
-    results = index.query(
+    results = await asyncio.to_thread(
+        index.query,
         vector=query_vector,
         top_k=top_k,
         include_metadata=True,

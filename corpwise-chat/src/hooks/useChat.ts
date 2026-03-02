@@ -15,9 +15,21 @@ export function useChat() {
     const [loading, setLoading] = useState(false);
     const [input, setInput] = useState("");
 
-    // Initialize companyId from localStorage or default to silaibook
+    // Company ID resolution order:
+    // 1. URL query param ?company_id=xxx  (for embeddable widget pages)
+    // 2. window.CORPWISE_COMPANY_ID       (set by the embedding script tag)
+    // 3. localStorage app_company_id      (set after admin login / plan selection)
+    // 4. empty string → widget is unconfigured and will show an error
     const [companyId, setCompanyId] = useState(() => {
-        return localStorage.getItem("app_company_id") || "silaibook";
+        const urlParam = new URLSearchParams(window.location.search).get("company_id");
+        const windowVar = (window as any).CORPWISE_COMPANY_ID as string | undefined;
+        const stored = localStorage.getItem("app_company_id");
+        const adminStored = localStorage.getItem("admin_company_id");
+        const resolved = urlParam || windowVar || stored || adminStored || "";
+        if (!resolved) {
+            console.warn("[CORPWISE] Chat widget has no company_id configured. Pass ?company_id=YOUR_ID in the URL or set window.CORPWISE_COMPANY_ID before the script loads.");
+        }
+        return resolved;
     });
 
     // Persistent User ID

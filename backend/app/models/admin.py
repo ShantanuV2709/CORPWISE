@@ -8,17 +8,19 @@ class AdminModel:
     """Model for Organization Admins (stored in 'admins' collection)."""
     
     @staticmethod
-    async def create(username, password, company_id, subscription_tier="professional"):
+    async def create(username, password, company_id, subscription_tier="starter", google_id=None):
         # Enforce lowercase
         company_id = company_id.lower()
         
-        try:
-            hashed_password = pwd_context.hash(password)
-        except ValueError as e:
-            # Handle "password cannot be longer than 72 bytes"
-            if "longer than 72 bytes" in str(e):
-                raise ValueError("Password is too long (max 72 characters)")
-            raise e
+        hashed_password = None
+        if password:
+            try:
+                hashed_password = pwd_context.hash(password)
+            except ValueError as e:
+                # Handle "password cannot be longer than 72 bytes"
+                if "longer than 72 bytes" in str(e):
+                    raise ValueError("Password is too long (max 72 characters)")
+                raise e
 
         # Import subscription tier config
         from app.models.subscription import get_tier_features, get_tier_dimensions
@@ -26,6 +28,7 @@ class AdminModel:
         vector_dimensions = get_tier_dimensions(subscription_tier)
 
         doc = {
+            "google_id": google_id,
             "username": username,
             "password": hashed_password,
             "company_id": company_id,
@@ -60,6 +63,10 @@ class AdminModel:
     @staticmethod
     async def get_by_company(company_id):
          return await db.admins.find_one({"company_id": company_id.lower()})
+
+    @staticmethod
+    async def get_by_google_id(google_id):
+        return await db.admins.find_one({"google_id": google_id})
 
     @staticmethod
     async def verify_admin(company_id, password):

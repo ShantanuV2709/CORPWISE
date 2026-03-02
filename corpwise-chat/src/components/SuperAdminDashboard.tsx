@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import DecryptedText from "./DecryptedText";
 import { deleteCompany, getCompanies } from "../api/auth";
 
@@ -44,7 +44,7 @@ export function SuperAdminDashboard({ token, onLogout }: SuperAdminDashboardProp
             const [companiesData, statsData] = await Promise.all([
                 getCompanies(token),
                 fetch(`${API_BASE}/super/statistics`, {
-                    headers: { "x-super-token": token }
+                    headers: { "Authorization": `Bearer ${token}` }
                 }).then(res => res.json())
             ]);
 
@@ -71,7 +71,7 @@ export function SuperAdminDashboard({ token, onLogout }: SuperAdminDashboardProp
                     method: 'PUT',
                     headers: {
                         "Content-Type": "application/json",
-                        "x-super-token": token
+                        "Authorization": `Bearer ${token}`
                     },
                     body: JSON.stringify({ new_tier: editForm.tier })
                 });
@@ -83,7 +83,7 @@ export function SuperAdminDashboard({ token, onLogout }: SuperAdminDashboardProp
                     method: 'PUT',
                     headers: {
                         "Content-Type": "application/json",
-                        "x-super-token": token
+                        "Authorization": `Bearer ${token}`
                     },
                     body: JSON.stringify({ status: editForm.status })
                 });
@@ -201,8 +201,8 @@ export function SuperAdminDashboard({ token, onLogout }: SuperAdminDashboardProp
                                 padding: "8px 20px",
                                 borderRadius: 8,
                                 fontSize: "0.9rem",
-                                background: "rgba(59, 130, 246, 0.15)",
-                                border: "1px solid rgba(59, 130, 246, 0.3)",
+                                background: "rgba(255, 255, 255, 0.15)",
+                                border: "1px solid rgba(255, 255, 255, 0.3)",
                                 color: "#93c5fd",
                                 fontWeight: 500
                             }}
@@ -281,8 +281,8 @@ export function SuperAdminDashboard({ token, onLogout }: SuperAdminDashboardProp
                                                         padding: "6px 16px",
                                                         borderRadius: 6,
                                                         fontSize: "0.85rem",
-                                                        background: "rgba(59, 130, 246, 0.1)",
-                                                        border: "1px solid rgba(59, 130, 246, 0.2)",
+                                                        background: "rgba(255, 255, 255, 0.1)",
+                                                        border: "1px solid rgba(255, 255, 255, 0.2)",
                                                         color: "#93c5fd"
                                                     }}
                                                 >
@@ -370,7 +370,7 @@ export function SuperAdminDashboard({ token, onLogout }: SuperAdminDashboardProp
                                     style={{
                                         flex: 2, padding: 12, borderRadius: 10, fontWeight: 600, border: "none",
                                         background: "linear-gradient(135deg, #3b82f6, #2563eb)", color: "white",
-                                        boxShadow: "0 4px 15px rgba(37, 99, 235, 0.4)"
+                                        boxShadow: "0 4px 15px rgba(255, 255, 255, 0.4)"
                                     }}
                                 >
                                     Save Changes

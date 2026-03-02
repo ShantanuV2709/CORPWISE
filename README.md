@@ -23,7 +23,7 @@ Ask questions, get answers instantly—just like asking a colleague.
 - **Intuitive Sidebar Navigation:** Seamlessly switch between Document Management, API Keys, Chat Logs, and Retrieval Testing
 - **Chat History Analysis:** Review user conversations with full transcripts to audit bot performance and improve retrieval
 - **Document Upload & Management:** Admins can upload `.md` and `.txt` files with automatic chunking and indexing
-- **User Management:** Role-based access control (Employees vs. Admins)
+- **User Management:** Role-based access control (Employees vs. Admins) with Secure **Google OAuth & SSO** integration
 - **System Monitoring:** View ingestion status and system health
 
 ### Smart Conversational AI
@@ -44,7 +44,7 @@ Ask questions, get answers instantly—just like asking a colleague.
 
 ### Premium "Cyber-Glass" Design
 - **Immersive UI:** A persistent, animated background with floating glass elements (`backdrop-filter`) creates a modern, depth-filled experience
-- **Fluid Animations:** Smooth transitions, hover lift effects, and refined message bubbles
+- **Fluid Animations:** Smooth transitions, intense "Vercel-style" hover lift & glow effects on minimal glassmorphism buttons, and refined message bubbles
 - **Responsive Layout:** Fully optimized for both desktop dashboards and mobile devices
 - **Onboarding Hub:** Dedicated "Quick Start" and "Documentation" views to guide new users through widget integration and API usage
 - **Smart Tier Selection:** An interactive wizard ("Help me choose") recommends the best plan based on document volume, team size, and complexity.
@@ -78,7 +78,7 @@ Ask questions, get answers instantly—just like asking a colleague.
 
 - Frontend: React 18, TypeScript, Glassmorphism CSS (Custom)
 - Backend: Python 3.9+, FastAPI, SlowAPI
-- Authentication: JWT-based Auth (Employee & Admin scopes)
+- Authentication: JWT-based Auth & **Google OAuth 2.0** (`@react-oauth/google` / `google-auth`)
 - AI Model: Google Gemini 2.5 Flash / Pro
 - Database: MongoDB (Metadata, Users, Chats), Pinecone (Vector Search, Multi-Dimension Support)
 - Orchestration: LangChain / Custom RAG Pipeline
@@ -248,15 +248,20 @@ CORPWISE/
 
 CORPWISE uses Retrieval Augmented Generation (RAG) to provide accurate, context-aware answers:
 
-1. Document Ingestion: Admins upload documents, which are automatically chunked and converted into vector embeddings
+1. Document Ingestion: Admins upload documents, which are automatically chunked and converted into vector embeddings (stored effectively in unified `chunks` collection)
 2. Query Processing: User questions are embedded and matched against the vector database using semantic search
 3. Context Retrieval: The most relevant document chunks are retrieved and ranked
 4. Answer Generation: Google Gemini generates a response using the retrieved context
 5. Source Attribution: The system provides links to source documents for verification
+6. Intelligent Routing: Existing users via Google Auth bypass the onboarding flow directly to standard interfaces
 
 ---
 
 ## API Endpoints
+
+### Authentication
+- `POST /auth/google` - Authenticate and register users/admins via Google OAuth
+- `POST /auth/admin/login` - Standard JWT login
 
 ### Chat
 - `POST /chat` - Submit a question and receive an AI-generated answer

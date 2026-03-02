@@ -5,6 +5,11 @@
 
 const API_BASE = "http://localhost:8001";
 
+function getAuthHeaders(): Record<string, string> {
+    const token = localStorage.getItem('admin_access_token');
+    return token ? { "Authorization": `Bearer ${token}` } : {};
+}
+
 export interface SubscriptionTier {
     name: string;
     description: string;
@@ -37,7 +42,7 @@ export async function updateSubscriptionTier(tierId: string, companyId: string):
         method: "PUT",
         headers: {
             "Content-Type": "application/json",
-            "X-Company-ID": companyId
+            ...getAuthHeaders()
         },
         body: JSON.stringify({
             company_id: companyId,

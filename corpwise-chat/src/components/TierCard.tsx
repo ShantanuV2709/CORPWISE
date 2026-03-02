@@ -35,6 +35,7 @@ interface TierCardProps {
     innerGradient?: string;
     behindGlowColor?: string;
     currentPlan?: boolean; // NEW PROP
+    isViewOnly?: boolean; // Prop to customize display for landing page marketing
 }
 
 export function TierCard({
@@ -49,7 +50,8 @@ export function TierCard({
     enableTilt = true,
     innerGradient,
     behindGlowColor,
-    currentPlan = false
+    currentPlan = false,
+    isViewOnly = false
 }: TierCardProps) {
     const wrapRef = useRef<HTMLDivElement>(null);
     const shellRef = useRef<HTMLDivElement>(null);
@@ -260,7 +262,7 @@ export function TierCard({
     return (
         <div
             ref={wrapRef}
-            className={`tier-card-wrapper ${isSelected || currentPlan ? 'selected' : ''}`}
+            className={`tier-card-wrapper ${isPopular ? 'is-popular' : ''} ${isSelected || currentPlan ? 'selected' : ''}`}
             style={cardStyle}
         >
             <div className="tier-behind" />
@@ -320,21 +322,23 @@ export function TierCard({
                                 ))}
                             </div>
 
-                            <button
-                                className={`tier-select-btn ${isSelected || currentPlan ? 'selected' : ''}`}
-                                disabled={currentPlan}
-                                style={currentPlan ? { opacity: 0.8, cursor: 'default' } : {}}
-                            >
-                                {currentPlan ? (
-                                    <>
-                                        <Check size={18} style={{ marginRight: 8 }} /> Current Plan
-                                    </>
-                                ) : isSelected ? (
-                                    <>
-                                        <Check size={18} style={{ marginRight: 8 }} /> Selected
-                                    </>
-                                ) : 'Select Plan'}
-                            </button>
+                            {!isViewOnly && (
+                                <button
+                                    className={`tier-select-btn ${isSelected || currentPlan ? 'selected' : ''}`}
+                                    disabled={currentPlan}
+                                    style={currentPlan ? { opacity: 0.8, cursor: 'default' } : {}}
+                                >
+                                    {currentPlan ? (
+                                        <>
+                                            <Check size={18} style={{ marginRight: 8 }} /> Current Plan
+                                        </>
+                                    ) : isSelected ? (
+                                        <>
+                                            <Check size={18} style={{ marginRight: 8 }} /> Selected
+                                        </>
+                                    ) : 'Select Plan'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </section>

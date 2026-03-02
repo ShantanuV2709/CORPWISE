@@ -1,5 +1,10 @@
 const API_BASE = "http://localhost:8001";
 
+function getAuthHeaders(): Record<string, string> {
+    const token = localStorage.getItem('admin_access_token');
+    return token ? { "Authorization": `Bearer ${token}` } : {};
+}
+
 export interface Document {
     _id: string;
     filename: string;
@@ -21,7 +26,7 @@ export async function uploadDocument(file: File, docType: string, companyId: str
         {
             method: "POST",
             headers: {
-                "X-Company-ID": companyId,
+                ...getAuthHeaders()
             },
             body: formData,
         }
@@ -37,7 +42,7 @@ export async function uploadDocument(file: File, docType: string, companyId: str
 export async function listDocuments(companyId: string): Promise<{ documents: Document[] }> {
     const response = await fetch(`${API_BASE}/admin/documents`, {
         headers: {
-            "X-Company-ID": companyId,
+            ...getAuthHeaders()
         }
     });
 
@@ -52,7 +57,7 @@ export async function deleteDocument(docId: string, companyId: string) {
     const response = await fetch(`${API_BASE}/admin/documents/${docId}`, {
         method: "DELETE",
         headers: {
-            "X-Company-ID": companyId,
+            ...getAuthHeaders()
         },
     });
 
@@ -75,7 +80,7 @@ export interface ApiKey {
 export async function listApiKeys(companyId: string): Promise<{ keys: ApiKey[] }> {
     const response = await fetch(`${API_BASE}/api-keys`, {
         headers: {
-            "X-Company-ID": companyId,
+            ...getAuthHeaders()
         }
     });
 
@@ -90,7 +95,7 @@ export async function generateApiKey(companyId: string, name: string): Promise<{
     const response = await fetch(`${API_BASE}/api-keys/generate?name=${encodeURIComponent(name)}`, {
         method: "POST",
         headers: {
-            "X-Company-ID": companyId,
+            ...getAuthHeaders()
         }
     });
 
@@ -105,7 +110,7 @@ export async function revokeApiKey(companyId: string, keyId: string) {
     const response = await fetch(`${API_BASE}/api-keys/${keyId}`, {
         method: "DELETE",
         headers: {
-            "X-Company-ID": companyId,
+            ...getAuthHeaders()
         }
     });
 
@@ -129,7 +134,7 @@ export async function debugSearch(companyId: string, query: string): Promise<{ r
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "X-Company-ID": companyId,
+            ...getAuthHeaders()
         },
         body: JSON.stringify({ query })
     });
@@ -177,7 +182,7 @@ export interface SubscriptionDetails {
 export async function getSubscription(companyId: string): Promise<SubscriptionDetails> {
     const response = await fetch(`${API_BASE}/admin/subscription`, {
         headers: {
-            "X-Company-ID": companyId,
+            ...getAuthHeaders()
         }
     });
 
@@ -219,7 +224,7 @@ export interface ConversationDetail {
 export async function listConversations(companyId: string, page: number = 1, limit: number = 20): Promise<{ conversations: ConversationSummary[], total: number, page: number, pages: number }> {
     const response = await fetch(`${API_BASE}/admin/conversations?page=${page}&limit=${limit}`, {
         headers: {
-            "X-Company-ID": companyId,
+            ...getAuthHeaders()
         }
     });
 
@@ -233,7 +238,7 @@ export async function listConversations(companyId: string, page: number = 1, lim
 export async function getConversationDetails(companyId: string, conversationId: string): Promise<ConversationDetail> {
     const response = await fetch(`${API_BASE}/admin/conversations/${conversationId}`, {
         headers: {
-            "X-Company-ID": companyId,
+            ...getAuthHeaders()
         }
     });
 

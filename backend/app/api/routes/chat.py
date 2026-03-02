@@ -59,25 +59,29 @@ async def chat(request: Request, payload: ChatRequest):
         is_authenticated = True
 
     # 2. JWT / SESSION (Internal Frontend)
-    # TODO: Implement proper JWT verification here.
-    # For now, we'll allow requests WITHOUT API Key ONLY IF they come from our known frontend origin
-    # AND have a valid session cookie (mocked logic or check for internal header if secured by upstream)
-    # BUT, to meet "Enforce authenticated identity... never trust only X-Company-ID", we must strictly require explicit auth.
-    
-    # TEMPORARY COMPATIBILITY MODE for Internal Frontend until it sends API Key:
-    # If no API key, we check if it's a "trusted" internal call? 
-    # NO. The user said "Enforce... never trust only X-Company-ID".
-    # So we MUST require API Key OR User Session.
-    
-    # Assuming the current frontend sends X-Company-ID but NO API KEY yet.
-    # We will BREAK frontend chat unless we add API Key sending to frontend FIRST.
-    # However, user accepted breaking changes if we have a plan. 
-    # Plan: "Internal Frontend: Will be updated to send X-API-Key".
+    elif "Authorization" in request.headers:
+        try:
+            auth_header = request.headers["Authorization"]
+            if auth_header.startswith("Bearer "):
+                token = auth_header.split(" ")[1]
+                import jwt
+                from app.core.config import SECRET_KEY
+                payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+                company_id = payload.get("company_id")
+                is_authenticated = True
+                print(f"🔑 JWT Verified for Chat: {company_id}")
+        except Exception as e:
+            print(f"JWT Auth failed in chat.py: {e}")
+            pass
     
     if not is_authenticated:
         # Strict Fail Close
         from fastapi import HTTPException
-        raise HTTPException(status_code=401, detail="Authentication required. Provide X-API-Key header.")
+        raise HTTPException(status_code=401, detail="Authentication required. Provide X-API-Key or Bearer token.")
+
+    if not company_id:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Company ID could not be determined.")
 
     # =========================================================================
 

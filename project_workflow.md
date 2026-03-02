@@ -121,7 +121,7 @@ sequenceDiagram
             Embed->>Mongo: Check cache by hash
             Mongo-->>Embed: Return cached embedding
         else Cache Miss
-            Embed->>Embed: Generate with SentenceTransformer
+            Embed->>LLM: Generate with Gemini Embeddings
             Embed->>Mongo: Store in cache
         end
         
@@ -174,18 +174,19 @@ sequenceDiagram
     UI->>Auth: Show Company Login
     Admin->>Auth: Enter company_id, username, password
     Auth->>Auth: Validate against MongoDB Companies
-    Auth-->>UI: Authenticated & Token Received ✓
+    Auth-->>UI: Authenticated & JWT Access Token Received ✓
     
     UI->>UI: Load document list
-    UI->>API: GET /admin/documents
-    API->>Mongo: DocumentModel.get_all()
-    Mongo-->>API: Returns all documents
+    UI->>API: GET /admin/documents (Header: Authorization: Bearer <token>)
+    API->>API: Validate JWT & Extract company_id
+    API->>Mongo: DocumentModel.get_all(company_id)
+    Mongo-->>API: Returns company documents
     API-->>UI: {documents: [...]}
     
     Admin->>UI: Select file (.md/.txt) + doc_type
     Admin->>UI: Click Upload
     
-    UI->>API: POST /admin/documents/upload
+    UI->>API: POST /admin/documents/upload (Header: Authorization: Bearer <token>)
     Note over API: FormData with file + doc_type
     
     API->>API: Validate file type (.md, .txt only)
@@ -245,7 +246,7 @@ graph TD
     F --> G{Embedding Cache?}
     
     G -->|Hit| H[Return Cached]
-    G -->|Miss| I[SentenceTransformer Encode]
+    G -->|Miss| I[Gemini Embeddings API]
     I --> J[Cache to MongoDB]
     J --> H
     
@@ -287,34 +288,32 @@ graph TD
 erDiagram
     MONGODB ||--o{ CONVERSATIONS : stores
     MONGODB ||--o{ DOCUMENTS : tracks
-    MONGODB ||--o{ EMBEDDING_CACHE : caches
-    MONGODB ||--o{ SYSTEM_INFO : contains
+    MONGODB ||--o{ ADMINS : manages
     
     PINECONE ||--o{ VECTOR_CHUNKS : indexes
     
     CONVERSATIONS {
         string user_id PK
+        string company_id
         array messages
         datetime created_at
-        datetime updated_at
+    }
+    
+    ADMINS {
+        string company_id PK
+        string username
+        string subscription_tier
+        object usage_stats
+        array api_keys
     }
     
     DOCUMENTS {
         uuid _id PK
+        string company_id
         string filename
         string doc_type
-        string uploaded_by
-        datetime uploaded_at
         string status
         int chunk_count
-        array pinecone_ids
-    }
-    
-    EMBEDDING_CACHE {
-        string text_hash PK
-        string text
-        array embedding
-        datetime created_at
     }
     
     VECTOR_CHUNKS {
@@ -324,6 +323,8 @@ erDiagram
     }
     
     VECTOR_CHUNKS ||--|| DOCUMENTS : belongs_to
+    ADMINS ||--o{ DOCUMENTS : owns
+    ADMINS ||--o{ CONVERSATIONS : owns
 ```
 
 ---
@@ -333,11 +334,11 @@ erDiagram
 ```mermaid
 graph LR
     subgraph "React Components"
-        A[SaaS Landing<br/>Registration/Login]
-        B[AdminPanel<br/>Doc Management]
-        C[ChatWidget<br/>Embedded Component]
-        D[MessageBubble<br/>Message Display]
-        E[FeedbackButtons<br/>👍 👎]
+        A[LandingPage / AuthSheet]
+        B[SuperAdminDashboard / AdminPanel]
+        C[ChatWidget / Chat Flow]
+        D[MessageBubble]
+        E[TierSelection / OnboardingStepper]
     end
     
     subgraph "API Clients"
@@ -476,11 +477,9 @@ mindmap
       Pydantic
     AI/ML
       Google Gemini API
-        Text Generation
+        Text Generation (Gemini Pro)
         Context Understanding
-      SentenceTransformers
-        all-MiniLM-L6-v2
-        384-dim embeddings
+        Embeddings (Text-Embedding-004)
     Databases
       MongoDB
         Conversations
@@ -572,8 +571,7 @@ graph TB
     end
     
     subgraph "External Services"
-        I[Google Gemini API]
-        J[SentenceTransformers<br/>Model Files]
+        I[Google Gemini API<br/>LLM & Embeddings]
     end
     
     A --> C
@@ -584,7 +582,6 @@ graph TB
     F --> G
     F --> H
     D --> I
-    D --> J
     
     style C fill:#4CAF50
     style D fill:#2196F3
@@ -618,33 +615,32 @@ graph LR
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Frontend
-    participant CORS
-    participant RateLimit
-    participant API
-    participant Services
+    participant Client
+    participant API Gateway
+    participant Auth Middleware
+    participant Database
+
+    Client->>API Gateway: Request Resource
     
-    User->>Frontend: Access Application
-    Frontend->>Frontend: Generate Session ID
-    
-    User->>Frontend: Send Request
-    Frontend->>CORS: Preflight Check
-    CORS->>CORS: Validate Origin & X-Company-ID
-    
-    CORS->>RateLimit: Forward Request
-    RateLimit->>RateLimit: Check IP Limits (5/min)
-    
-    alt Rate Limit Exceeded
-        RateLimit-->>Frontend: 429 Too Many Requests
-    else Within Limit
-        RateLimit->>API: Process Request
-        API->>Services: Execute Business Logic
-        Services-->>API: Return Result
-        API-->>Frontend: Success Response
+    alt Internal Dashboard 內部 (Browser)
+        API Gateway->>Auth Middleware: Check Authorization Header
+        Auth Middleware->>Auth Middleware: Validate JWT Signature
+        Auth Middleware->>Auth Middleware: Extract company_id & role
+        Auth Middleware-->>API Gateway: Admin Authenticated
+    else External Widget 外部 (Website)
+        API Gateway->>Auth Middleware: Check X-API-Key Header
+        Auth Middleware->>Database: Lookup company by API Key
+        Database-->>Auth Middleware: Return internal company_id
+        Auth Middleware-->>API Gateway: Widget Authenticated
     end
-    
-    Frontend-->>User: Display Result
+
+    alt Invalid Token/Key
+        API Gateway-->>Client: 401 Unauthorized
+    else Validated
+        API Gateway->>Database: Execute Business Logic with scoped company_id
+        Database-->>API Gateway: Data Return
+        API Gateway-->>Client: Success Response (200 OK)
+    end
 ```
 
 ---
@@ -669,8 +665,8 @@ graph TD
 
     subgraph "API Layer"
         C{Request Handler}
-        C -->|Header: X-Company-ID=silaibook| D[Context: SilaiBook]
-        C -->|Header: X-Company-ID=corpwise| E[Context: Corpwise]
+        C -->|Header: X-API-Key or JWT Bearer| D[Context: SilaiBook]
+        C -->|Header: X-API-Key or JWT Bearer| E[Context: Corpwise]
     end
 
     subgraph "Retrieval Engine"
@@ -720,14 +716,14 @@ graph TD
     end
 
     subgraph "Mode 1: Fullscreen Dashboard"
-        D[DashboardLayout]
+        D[DashboardLayout - JWT Auth]
         E[Sidebar]
         F[AdminPanel]
         G[Large Chat Window]
     end
 
     subgraph "Mode 2: Embeddable Widget"
-        H[ChatWidget]
+        H[ChatWidget - API Key Auth]
         I[Floating Button]
         J[Popover Window]
     end
@@ -760,23 +756,10 @@ graph TD
 
 ```mermaid
 graph LR
-    P1[Phase 1 ✅<br/>Single-tenant RAG MVP] --> P2[Phase 2 🚧<br/>Multi-tenancy + Admin Panel] --> P3[Phase 3 🔮<br/>Billing, Public APIs, Analytics]
+    P1[Phase 1 ✅<br/>Single-tenant RAG MVP] --> P2[Phase 2 ✅<br/>Multi-tenancy + Admin Panel] --> P3[Phase 3 ✅<br/>Billing, API Keys, Security]
 
     style P1 fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
-    style P2 fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000
-    style P3 fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#000
+    style P2 fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style P3 fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
 ```
-
----
-
-##  IMPORTANT: SaaS Multi-Tenant Updates
-
-**Note:** This document reflects the original architecture. For the latest SaaS multi-tenant features including:
-- Company registration & authentication
-- Subscription tiers (Starter, Professional, Enterprise)
-- Multi-tenant data isolation with Pinecone namespaces
-- Super Admin dashboard
-- Updated API flows with X-Company-ID headers
-
-**Please refer to:** [saas_workflow_updates.md](./saas_workflow_updates.md) and [multi_tenant_architecture.md](./multi_tenant_architecture.md)
 

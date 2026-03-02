@@ -5,24 +5,22 @@ from datetime import datetime
 import secrets
 from passlib.context import CryptContext
 
+from app.core.security import get_current_admin
+
 router = APIRouter(prefix="/api-keys", tags=["API Keys"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Helper to verify company_id from header (middleware should have set it, but we double check)
-# Or we can rely on X-Company-ID header passed from frontend
-async def get_current_company(request: Request):
-    company_id = request.headers.get("X-Company-ID")
-    if not company_id:
-        raise HTTPException(status_code=400, detail="Missing X-Company-ID header")
-    return company_id
-
 @router.post("/generate")
-async def generate_api_key(request: Request, name: str = "Default Key"):
+async def generate_api_key(
+    request: Request, 
+    name: str = "Default Key",
+    current_admin: dict = Depends(get_current_admin)
+):
     """
     Generate a new API key.
     Returns the raw key ONLY ONCE.
     """
-    company_id = await get_current_company(request)
+    company_id = current_admin["company_id"]
     
     # Check if admin exists
     admin = await AdminModel.get_by_company(company_id)
@@ -53,9 +51,12 @@ async def generate_api_key(request: Request, name: str = "Default Key"):
     }
 
 @router.get("/")
-async def list_api_keys(request: Request):
+async def list_api_keys(
+    request: Request,
+    current_admin: dict = Depends(get_current_admin)
+):
     """List all API keys for the company (masked)."""
-    company_id = await get_current_company(request)
+    company_id = current_admin["company_id"]
     keys = await AdminModel.get_api_keys(company_id)
     
     # Filter out sensitive data (key_hash) just in case
@@ -73,8 +74,12 @@ async def list_api_keys(request: Request):
     return {"status": "success", "keys": clean_keys}
 
 @router.delete("/{key_id}")
-async def revoke_api_key(key_id: str, request: Request):
+async def revoke_api_key(
+    key_id: str, 
+    request: Request,
+    current_admin: dict = Depends(get_current_admin)
+):
     """Revoke an API key."""
-    company_id = await get_current_company(request)
+    company_id = current_admin["company_id"]
     await AdminModel.revoke_api_key(company_id, key_id)
     return {"status": "success", "message": "Key revoked"}

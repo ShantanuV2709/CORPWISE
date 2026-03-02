@@ -10,8 +10,8 @@ export async function sendQuery(
 ): Promise<ChatResponse> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-  // Fallback: If companyId is not passed, default to "silaibook" during this beta testing phase
-  const targetCompany = companyId || "silaibook";
+  // Fallback: If companyId is not passed, read from window config
+  const targetCompany = companyId || (window as any).CORPWISE_COMPANY_ID || "";
 
   console.log(`[API] Sending Query. Company: ${targetCompany}, Query: ${query}`);
 
@@ -24,14 +24,16 @@ export async function sendQuery(
     headers["X-User-ID"] = userId;
   }
 
-  // 🔐 API Key Authentication
-  // Ideally, this should be fetched from context or secure store. 
-  // For now, we'll look for it in localStorage where the Admin Dashboard saves it.
+  // 🔐 API Key — resolved in priority order:
+  // 1. window.CORPWISE_API_KEY (set in index.html — works in any browser)
+  // 2. localStorage 'corpwise_api_key' (set when admin clicks Copy in API Keys tab)
+  const windowApiKey = (window as any).CORPWISE_API_KEY as string | undefined;
   const storedApiKey = localStorage.getItem('corpwise_api_key');
-  if (storedApiKey) {
-    headers["X-API-Key"] = storedApiKey;
+  const resolvedApiKey = windowApiKey || storedApiKey;
+  if (resolvedApiKey) {
+    headers["X-API-Key"] = resolvedApiKey;
   } else {
-    console.warn("[API] No API Key found in localStorage. Chat request may fail.");
+    console.warn("[API] No API Key found. Set window.CORPWISE_API_KEY or localStorage.corpwise_api_key.");
   }
 
   const res = await fetch(`${API_BASE}/chat`, {

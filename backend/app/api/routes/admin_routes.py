@@ -2,22 +2,11 @@ from fastapi import APIRouter, HTTPException, Depends, Header
 from app.db.mongodb import db
 from app.db.pinecone_client import get_index
 
+from app.core.security import verify_super_admin_token
+
 router = APIRouter(prefix="/super", tags=["Super Admin"])
 
-# Dependency to check for Super Admin
-# In a real app, we'd verify a JWT token. 
-# Here we trust the client to send a header, OR we can just rely on the fact 
-# that this endpoint is only known to the SuperAdminDashboard which gates access.
-# For better security, let's demand a secret header.
-async def verify_super_admin(x_super_token: str = Header(None)):
-    from app.core.config import SUPER_USER_KEY
-    if not SUPER_USER_KEY:
-        raise HTTPException(status_code=500, detail="Super User Key not configured")
-        
-    if x_super_token != SUPER_USER_KEY: 
-         raise HTTPException(status_code=403, detail="Unauthorized")
-
-@router.get("/companies", dependencies=[Depends(verify_super_admin)])
+@router.get("/companies", dependencies=[Depends(verify_super_admin_token)])
 async def get_all_companies():
     """List all registered organizations with subscription details."""
     # Return full admin documents excluding password and including subscription data
@@ -38,7 +27,7 @@ async def get_all_companies():
             
     return companies
 
-@router.delete("/company/{company_id}", dependencies=[Depends(verify_super_admin)])
+@router.delete("/company/{company_id}", dependencies=[Depends(verify_super_admin_token)])
 async def delete_company(company_id: str):
     """
     Hard delete an organization and all its data.
@@ -98,7 +87,7 @@ class UpdateStatusRequest(BaseModel):
     status: str
 
 
-@router.put("/company/{company_id}/tier", dependencies=[Depends(verify_super_admin)])
+@router.put("/company/{company_id}/tier", dependencies=[Depends(verify_super_admin_token)])
 async def update_company_tier(company_id: str, payload: UpdateTierRequest):
     """Update a company's subscription tier."""
     company_id = company_id.lower()
@@ -124,7 +113,7 @@ async def update_company_tier(company_id: str, payload: UpdateTierRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/company/{company_id}/status", dependencies=[Depends(verify_super_admin)])
+@router.put("/company/{company_id}/status", dependencies=[Depends(verify_super_admin_token)])
 async def update_company_status(company_id: str, payload: UpdateStatusRequest):
     """Update a company's subscription status (active/suspended/cancelled)."""
     company_id = company_id.lower()
@@ -147,7 +136,7 @@ async def update_company_status(company_id: str, payload: UpdateStatusRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/statistics", dependencies=[Depends(verify_super_admin)])
+@router.get("/statistics", dependencies=[Depends(verify_super_admin_token)])
 async def get_platform_statistics():
     """Get platform-wide statistics."""
     try:

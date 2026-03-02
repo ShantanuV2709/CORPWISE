@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ArrowLeft } from 'lucide-react';
 import { login, signup } from "../api/auth";
+import toast from 'react-hot-toast';
 
 interface UserAuthProps {
     onAuthenticated: (username: string, companyId: string) => void;
@@ -25,15 +26,18 @@ export function UserAuth({ onAuthenticated, onBack, embedded = false }: UserAuth
             if (isLogin) {
                 const data = await login(username, password);
                 // Save token or session info if we had one, for now just user props
+                toast.success("Welcome back!");
                 onAuthenticated(data.username, data.company_id);
             } else {
                 const data = await signup(username, password, companyId);
                 // Auto login after signup? or ask to login?
                 // For simplicity, auto-login
+                toast.success("Account created successfully!");
                 onAuthenticated(data.username, data.company_id);
             }
         } catch (err: any) {
             setError(err.message || "Authentication failed");
+            toast.error(err.message || "Authentication failed");
         } finally {
             setLoading(false);
         }

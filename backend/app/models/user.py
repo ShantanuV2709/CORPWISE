@@ -22,7 +22,7 @@ class UserModel:
         return hashlib.sha256((password + salt).encode()).hexdigest()
 
     @staticmethod
-    async def create(username: str, password: str, company_id: str):
+    async def create(username: str, password: str, company_id: str, google_id: str = None):
         """Create a new user."""
         existing = await UserModel.get_by_username(username)
         if existing:
@@ -33,9 +33,14 @@ class UserModel:
         if username.lower() == "admin":
             is_admin = True
 
+        hashed_password = None
+        if password:
+            hashed_password = UserModel.hash_password(password)
+
         user = {
+            "google_id": google_id,
             "username": username,
-            "password_hash": UserModel.hash_password(password),
+            "password_hash": hashed_password,
             "company_id": company_id,
             "is_admin": is_admin,
             "created_at": datetime.utcnow()
@@ -48,6 +53,11 @@ class UserModel:
     async def get_by_username(username: str):
         """Get user by username."""
         return await UserModel.collection.find_one({"username": username})
+
+    @staticmethod
+    async def get_by_google_id(google_id: str):
+        """Get user by google_id."""
+        return await UserModel.collection.find_one({"google_id": google_id})
     
     @staticmethod
     async def verify_user(username: str, password: str):

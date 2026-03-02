@@ -1,0 +1,58 @@
+﻿/* Button-04: Icon Hover Arrow Button */
+.btn-icon-hover {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 32px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    color: #ffffff;
+    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow:
+        0 4px 15px rgba(99, 102, 241, 0.35),
+        0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.01em;
+}
+
+.btn-icon-hover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.btn-icon-hover:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow:
+        0 8px 25px rgba(99, 102, 241, 0.45),
+        0 4px 10px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+}
+
+.btn-icon-hover:hover::before {
+    opacity: 1;
+}
+
+.btn-icon-hover:active {
+    transform: translateY(0) scale(0.99);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Arrow animation on group hover */
+.btn-icon-hover-arrow {
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.btn-icon-hover:hover .btn-icon-hover-arrow {
+    transform: translateX(3px);
+}

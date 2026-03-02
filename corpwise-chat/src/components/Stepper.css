@@ -1,4 +1,4 @@
-.onboarding-section .outer-container {
+﻿.onboarding-section .outer-container {
     display: flex;
     /* min-height: 100%; REMOVED to fit content */
     flex: 1 1 0%;
@@ -8,17 +8,7 @@
     padding: 1rem;
 }
 
-@media (min-width: 640px) {
-    .onboarding-section .outer-container {
-        aspect-ratio: 4 / 3;
-    }
-}
 
-@media (min-width: 768px) {
-    .onboarding-section .outer-container {
-        aspect-ratio: 2 / 1;
-    }
-}
 
 .onboarding-section .step-circle-container {
     margin-left: auto;
@@ -31,7 +21,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow:
         0 20px 60px rgba(0, 0, 0, 0.4),
-        0 0 40px rgba(96, 165, 250, 0.1);
+        0 0 40px rgba(99, 102, 241, 0.1);
 }
 
 .onboarding-section .step-indicator-row {
@@ -62,7 +52,7 @@
     font-weight: 600;
     margin-bottom: 0.5rem;
     /* Reduced */
-    background: linear-gradient(135deg, #fff 0%, #60a5fa 100%);
+    background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.75) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -90,9 +80,9 @@
 .onboarding-section .step-default input:focus,
 .onboarding-section .step-default select:focus {
     outline: none;
-    border-color: #60a5fa;
-    background: rgba(96, 165, 250, 0.05);
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+    border-color: rgba(99, 102, 241, 0.5);
+    background: rgba(99, 102, 241, 0.05);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .onboarding-section .step-default input::placeholder {
@@ -158,19 +148,19 @@
     align-items: center;
     justify-content: center;
     border-radius: 0.5rem;
-    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
     color: #fff;
     font-weight: 600;
     letter-spacing: -0.025em;
     padding: 0.625rem 1.75rem;
     cursor: pointer;
     border: none;
-    box-shadow: 0 4px 20px rgba(96, 165, 250, 0.3);
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
 }
 
 .onboarding-section .next-button:hover {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    box-shadow: 0 6px 30px rgba(96, 165, 250, 0.4);
+    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+    box-shadow: 0 6px 30px rgba(99, 102, 241, 0.4);
     transform: translateY(-1px);
 }
 
@@ -224,7 +214,7 @@
     left: 0;
     top: 0;
     height: 100%;
-    box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
 }
 
 .onboarding-section .check-icon {

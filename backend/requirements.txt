@@ -9,3 +9,4 @@ sentence-transformers
 google-genai
 python-multipart
 pypdf
+PyJWT

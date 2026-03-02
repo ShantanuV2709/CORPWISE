@@ -2,6 +2,7 @@ from sentence_transformers import SentenceTransformer
 from datetime import datetime
 import time
 from typing import Dict
+import asyncio
 
 from app.db.mongodb import db
 from app.services.hash import sha256_hash
@@ -84,10 +85,12 @@ async def embed_text(text: str, dimensions: int = 384) -> list[float]:
     
     # Get appropriate model and generate embedding
     model = get_model(dimensions)
-    embedding = model.encode(
+    encoded = await asyncio.to_thread(
+        model.encode,
         text,
         normalize_embeddings=True
-    ).tolist()
+    )
+    embedding = encoded.tolist()
     
     # Cache the embedding
     await embedding_cache.insert_one({

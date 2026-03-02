@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Target, Lock } from "lucide-react";
 import DecryptedText from "../components/DecryptedText";
@@ -85,45 +85,13 @@ export function RoleSelection() {
                 />
             </div>
 
-            {/* Try Demo Button - Top Left */}
-            <div style={{
-                opacity: isLoaded ? 1 : 0,
-                transition: 'opacity 0.8s ease',
-                zIndex: 10
-            }}>
-                <button
-                    onClick={() => navigate('/demo')}
-                    style={{
-                        position: 'absolute',
-                        top: '24px',
-                        left: '24px',
-                        padding: '10px 20px',
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        borderRadius: '10px',
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                    }}
-                >
-                    Try Demo
-                </button>
-            </div>
-
-            {/* Blur Text Background - Behind Everything */}
+            {/* Blur Text Background - Top Half */}
             <div style={{
                 position: 'fixed',
-                top: '50%',
+                top: '42%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                zIndex: 0, // Same layer as lights, but handled by order
+                zIndex: 0,
                 pointerEvents: 'none',
                 fontSize: '12rem',
                 fontWeight: 900,
@@ -133,7 +101,7 @@ export function RoleSelection() {
             }}>
                 <BlurText
                     text="CORPWISE"
-                    delay={50} // Faster text animation
+                    delay={50}
                     animateBy="words"
                     direction="top"
                 />
@@ -146,11 +114,11 @@ export function RoleSelection() {
                 <div style={{
                     textAlign: 'center',
                     marginBottom: '80px',
+                    marginTop: '5vh',
                     zIndex: 1,
                     opacity: isLoaded ? 1 : 0,
                     transform: isLoaded ? 'translateY(0)' : 'translateY(10px)',
                     transition: 'opacity 0.8s ease, transform 0.8s ease'
-                    /* No delay, appears immediately with isLoaded */
                 }}>
                     <p style={{
                         fontSize: '1.3rem',
@@ -169,7 +137,7 @@ export function RoleSelection() {
                     <div style={{
                         width: '80px',
                         height: '3px',
-                        background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent)',
+                        background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent)',
                         margin: '24px auto 0',
                         borderRadius: '2px'
                     }} />
@@ -199,7 +167,7 @@ export function RoleSelection() {
             {!showAdminLogin && !showRegister && !showEmployeeLogin ? (
                 <div style={{
                     display: 'flex',
-                    gap: '40px', /* Increased gap */
+                    gap: '40px',
                     alignItems: 'stretch',
                     justifyContent: 'center',
                     zIndex: 1,
@@ -207,11 +175,11 @@ export function RoleSelection() {
                     maxWidth: '1200px',
                     width: '100%',
                     padding: '20px',
-                    perspective: '1000px', /* For 3D feel */
+                    marginTop: '15vh', /* Pushed buttons down */
+                    perspective: '1000px',
                     opacity: isLoaded ? 1 : 0,
                     transform: isLoaded ? 'translateY(0)' : 'translateY(20px)',
                     transition: 'opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s'
-                    /* 200ms delay after subtitle */
                 }}>
                     {/* Choose Your Plan Card */}
                     <button
@@ -248,6 +216,7 @@ export function RoleSelection() {
                     width: '100%',
                     maxWidth: '500px',
                     padding: '20px',
+                    marginTop: '15vh',
                     opacity: isLoaded ? 1 : 0,
                     transform: isLoaded ? 'translateY(0)' : 'translateY(20px)',
                     transition: 'opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s'
@@ -264,7 +233,7 @@ export function RoleSelection() {
                     />
                 </div>
             ) : showRegister ? (
-                <div style={{ zIndex: 1, maxWidth: '500px', width: '100%' }}>
+                <div style={{ zIndex: 1, maxWidth: '500px', width: '100%', marginTop: '15vh' }}>
                     <CompanyRegistration
                         onRegistered={handleRegistrationSuccess}
                         onBack={() => setShowRegister(false)}
@@ -272,7 +241,7 @@ export function RoleSelection() {
                     />
                 </div>
             ) : (
-                <div style={{ zIndex: 1, maxWidth: '500px', width: '100%' }}>
+                <div style={{ zIndex: 1, maxWidth: '500px', width: '100%', marginTop: '15vh' }}>
                     <UserAuth
                         onAuthenticated={handleAuthenticated}
                         onBack={() => setShowEmployeeLogin(false)}

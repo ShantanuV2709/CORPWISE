@@ -8,6 +8,7 @@ import uuid
 import re
 from pathlib import Path
 from typing import List, Dict
+import asyncio
 
 from app.services.embeddings import embed_text
 from app.db.pinecone_client import get_index
@@ -167,16 +168,25 @@ async def process_and_index_document(
     
     print(f"📄 Processing document with {dimensions}-dim embeddings")
 
+    # Arrays for batching
+    pinecone_vectors = []
+    mongo_documents = []
+
     for section_title, section_body in sections:
         chunks = chunk_text(section_body)
         
         # Sanitize section title for use in Pinecone ID (ASCII only)
         safe_section_title = sanitize_for_pinecone_id(section_title)
         
-        for i, chunk_text_content in enumerate(chunks):
-            # Generate embedding with specified dimensions
-            embedding = await embed_text(chunk_text_content, dimensions=dimensions)
+        if not chunks:
+            continue
             
+        # Batch embedding generation
+        embeddings = await asyncio.gather(
+            *[embed_text(chunk, dimensions=dimensions) for chunk in chunks]
+        )
+        
+        for i, (chunk_text_content, embedding) in enumerate(zip(chunks, embeddings)):
             # Create unique ID with sanitized section name
             chunk_id = f"{doc_id}__{safe_section_title}__{i}"
             pinecone_ids.append(chunk_id)
@@ -193,14 +203,9 @@ async def process_and_index_document(
                 "dimensions": dimensions  # Track which tier/model was used
             }
             
-            # Upsert to Pinecone
-            index.upsert(
-                vectors=[(chunk_id, embedding, metadata)],
-                namespace=namespace
-            )
-
-            # Insert into MongoDB for Keyword Search (Hybrid RAG)
-            await db.internal_documents.insert_one({
+            pinecone_vectors.append((chunk_id, embedding, metadata))
+            
+            mongo_documents.append({
                 "doc_id": doc_id,
                 "chunk_id": chunk_id,
                 "text": chunk_text_content,
@@ -213,6 +218,16 @@ async def process_and_index_document(
             })
             
             total_chunks += 1
+            
+    # Batch inserts
+    if pinecone_vectors:
+        batch_size = 500
+        for i in range(0, len(pinecone_vectors), batch_size):
+            batch = pinecone_vectors[i:i + batch_size]
+            await asyncio.to_thread(index.upsert, vectors=batch, namespace=namespace)
+
+    if mongo_documents:
+        await db.chunks.insert_many(mongo_documents)
     
     return {
         "chunk_count": total_chunks,

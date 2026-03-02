@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { ArrowLeft } from 'lucide-react';
 import { adminSignup } from "../api/auth";
-import { fetchSubscriptionTiers, type SubscriptionTier } from "../api/subscription";
-import { TierCard } from "./TierCard";
+import toast from 'react-hot-toast';
 
 interface CompanyRegistrationProps {
     onRegistered: (username: string, companyId: string) => void;
@@ -15,26 +14,8 @@ export function CompanyRegistration({ onRegistered, onBack, embedded = false }: 
     const [companyId, setCompanyId] = useState("");
     const [adminUsername, setAdminUsername] = useState("");
     const [password, setPassword] = useState("");
-    const [selectedTier, setSelectedTier] = useState("professional");
-    const [tiers, setTiers] = useState<Record<string, SubscriptionTier>>({});
-    const [loadingTiers, setLoadingTiers] = useState(true);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        loadTiers();
-    }, []);
-
-    const loadTiers = async () => {
-        try {
-            const data = await fetchSubscriptionTiers();
-            setTiers(data.tiers);
-        } catch (err) {
-            console.error("Failed to load tiers:", err);
-        } finally {
-            setLoadingTiers(false);
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,10 +23,12 @@ export function CompanyRegistration({ onRegistered, onBack, embedded = false }: 
         setLoading(true);
 
         try {
-            const data = await adminSignup(adminUsername, password, companyId, selectedTier);
+            const data = await adminSignup(adminUsername, password, companyId, "starter");
+            toast.success("Organization registered successfully!");
             onRegistered(data.username, data.company_id);
         } catch (err: any) {
             setError(err.message || "Registration failed");
+            toast.error(err.message || "Registration failed");
         } finally {
             setLoading(false);
         }
@@ -121,82 +104,7 @@ export function CompanyRegistration({ onRegistered, onBack, embedded = false }: 
                     minLength={6}
                 />
 
-                {/* Tier Selection Section */}
-                <div style={{ marginTop: "32px", marginBottom: "24px" }}>
-                    <h4 style={{
-                        textAlign: "center",
-                        marginBottom: "24px",
-                        color: "rgba(255,255,255,0.9)",
-                        fontSize: "1.25rem",
-                        fontWeight: 600
-                    }}>
-                        Choose Your Plan
-                    </h4>
-
-                    {loadingTiers ? (
-                        <div style={{
-                            textAlign: "center",
-                            padding: "40px",
-                            color: "rgba(255,255,255,0.6)"
-                        }}>
-                            Loading plans...
-                        </div>
-                    ) : (
-                        <div style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                            gap: "24px",
-                            maxWidth: "1200px",
-                            margin: "0 auto"
-                        }}>
-                            {Object.entries(tiers).map(([tierId, tier]) => (
-                                <TierCard
-                                    key={tierId}
-                                    tierId={tierId}
-                                    tierName={tier.name}
-                                    price={tier.price_display}
-                                    description={tier.description}
-                                    isPopular={tierId === "professional"}
-                                    isSelected={selectedTier === tierId}
-                                    onSelect={setSelectedTier}
-                                    features={[
-                                        {
-                                            text: tier.max_documents === -1
-                                                ? "Unlimited Documents"
-                                                : `${tier.max_documents} Documents`,
-                                            enabled: true
-                                        },
-                                        {
-                                            text: tier.max_queries_per_month === -1
-                                                ? "Unlimited Queries"
-                                                : `${tier.max_queries_per_month.toLocaleString()} Queries/month`,
-                                            enabled: true
-                                        },
-                                        {
-                                            text: "Advanced Analytics",
-                                            enabled: tier.analytics_enabled
-                                        },
-                                        {
-                                            text: "Custom Branding",
-                                            enabled: tier.custom_branding
-                                        },
-                                        {
-                                            text: "Priority Support",
-                                            enabled: tier.priority_support
-                                        }
-                                    ]}
-                                    behindGlowColor={
-                                        tierId === "enterprise"
-                                            ? "rgba(167, 139, 250, 0.67)"
-                                            : tierId === "professional"
-                                                ? "rgba(16, 185, 129, 0.67)"
-                                                : "rgba(59, 130, 246, 0.67)"
-                                    }
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
+                {/* Tier Selection moved to dedicated OnboardingPage */}
 
                 <button
                     type="submit"

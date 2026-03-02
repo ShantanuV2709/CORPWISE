@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { AdminAuth } from "../components/AdminAuth";
+﻿import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+// Authentication handled by DashboardLayout
 import {
     uploadDocument, listDocuments, deleteDocument, Document as AdminDocument,
     listApiKeys, generateApiKey, revokeApiKey, ApiKey, debugSearch,
-    listConversations, getConversationDetails, ConversationSummary, ConversationDetail
+    listConversations, getConversationDetails, ConversationSummary, ConversationDetail,
+    getSubscription, SubscriptionDetails
 } from "../api/admin";
+import { fetchSubscriptionTiers, updateSubscriptionTier, type SubscriptionTier } from "../api/subscription";
+import { TierCard } from "../components/TierCard";
+import { SkeletonLoader } from "../components/SkeletonLoader";
+import { OnboardingStepper } from "../components/OnboardingStepper";
+import toast from 'react-hot-toast';
 import {
     Lock,
     Upload,
@@ -27,22 +33,48 @@ import {
     Search,
     X,
     MessageSquare,
-    History
+    History,
+    Sparkles,
+    Users,
+    CreditCard,
+    Zap,
+    Lightbulb
 } from "lucide-react";
 
 export function AdminPanel() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [companyId, setCompanyId] = useState(""); // Store logged-in company
     const [documents, setDocuments] = useState<AdminDocument[]>([]);
+    const [loadingDocs, setLoadingDocs] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [docType, setDocType] = useState("general");
     const [isDragging, setIsDragging] = useState(false);
 
+    const location = useLocation();
+    const activeRoute = location.pathname.split('/').pop() || '';
+    const searchParams = new URLSearchParams(location.search);
+    const urlSearchQuery = searchParams.get('q') || '';
+
+    // Map Dashboard routes to AdminPanel internal names
+    const activeTab =
+        activeRoute === 'apikeys' ? 'api-keys' :
+            activeRoute === 'logs' ? 'chat-history' :
+                activeRoute === 'search-debug' ? 'search-debug' :
+                    activeRoute === 'billing' ? 'billing' :
+                        activeRoute === 'overview' ? 'overview' : 'documents';
+
+    // Pre-fill search from URL query param if coming from header search bar
+    React.useEffect(() => {
+        if (activeTab === 'search-debug' && urlSearchQuery) {
+            setSearchQuery(urlSearchQuery);
+        }
+    }, [activeTab, urlSearchQuery]);
+
     // API Key State
-    const [activeTab, setActiveTab] = useState<'documents' | 'api-keys' | 'search-debug' | 'chat-history'>('documents');
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+    const [loadingKeys, setLoadingKeys] = useState(true);
     const [generatedKey, setGeneratedKey] = useState<{ key: string, name: string } | null>(null);
     const [newKeyName, setNewKeyName] = useState("");
     const [showKeyModal, setShowKeyModal] = useState(false);
@@ -52,12 +84,25 @@ export function AdminPanel() {
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searchLoading, setSearchLoading] = useState(false);
 
+    // Subscription State (for Overview tab)
+    const [currentSub, setCurrentSub] = useState<SubscriptionDetails | null>(null);
+    const [loadingOverview, setLoadingOverview] = useState(false);
+    const [tiers, setTiers] = useState<Record<string, SubscriptionTier>>({});
+
     // Chat History State
     const [conversations, setConversations] = useState<ConversationSummary[]>([]);
     const [chatPage, setChatPage] = useState(1);
     const [totalChats, setTotalChats] = useState(0);
     const [selectedConversation, setSelectedConversation] = useState<ConversationDetail | null>(null);
     const [chatLoading, setChatLoading] = useState(false);
+
+    // Billing tab state
+    const [showOnboarding, setShowOnboarding] = useState(false);
+    const [recommendedTier, setRecommendedTier] = useState<string | null>(null);
+    const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
+    const [tierUpdating, setTierUpdating] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
     const navigate = useNavigate();
 
@@ -78,23 +123,47 @@ export function AdminPanel() {
                 loadApiKeys();
             } else if (activeTab === 'chat-history') {
                 loadConversations();
+            } else if (activeTab === 'overview' || activeTab === 'billing') {
+                loadOverview();
             }
         }
     }, [isAuthenticated, activeTab]);
 
+    const loadOverview = async () => {
+        if (!companyId) return;
+        setLoadingOverview(true);
+        try {
+            const [subData, tiersData, keysData] = await Promise.all([
+                getSubscription(companyId),
+                fetchSubscriptionTiers(),
+                listApiKeys(companyId)
+            ]);
+            setCurrentSub(subData);
+            setTiers(tiersData.tiers);
+            setApiKeys(keysData.keys);
+        } catch (err) {
+            console.error('Failed to load overview:', err);
+        } finally {
+            setLoadingOverview(false);
+        }
+    };
+
     const loadApiKeys = async () => {
         if (!companyId) return;
+        setLoadingKeys(true);
         try {
             const data = await listApiKeys(companyId);
             setApiKeys(data.keys);
         } catch (error) {
             console.error("Failed to load API keys:", error);
+        } finally {
+            setLoadingKeys(false);
         }
     };
 
     const handleGenerateKey = async () => {
         if (!newKeyName.trim()) {
-            alert("Please enter a name for the key");
+            toast.error("Please enter a name for the key");
             return;
         }
         try {
@@ -103,8 +172,9 @@ export function AdminPanel() {
             setNewKeyName("");
             setShowKeyModal(true);
             loadApiKeys();
+            toast.success("API Key generated successfully");
         } catch (error) {
-            alert("Failed to generate key: " + error);
+            toast.error("Failed to generate key: " + error);
         }
     };
 
@@ -113,8 +183,9 @@ export function AdminPanel() {
         try {
             await revokeApiKey(companyId, keyId);
             loadApiKeys();
+            toast.success("API Key revoked");
         } catch (error) {
-            alert("Failed to revoke key: " + error);
+            toast.error("Failed to revoke key: " + error);
         }
     };
 
@@ -125,7 +196,7 @@ export function AdminPanel() {
             const data = await debugSearch(companyId, searchQuery);
             setSearchResults(data.results);
         } catch (error) {
-            alert("Search failed: " + error);
+            toast.error("Search failed: " + error);
         } finally {
             setSearchLoading(false);
         }
@@ -133,16 +204,19 @@ export function AdminPanel() {
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        alert("Copied to clipboard!");
+        toast.success("Copied to clipboard!");
     };
 
     const loadDocuments = async () => {
         if (!companyId) return;
+        setLoadingDocs(true);
         try {
             const data = await listDocuments(companyId);
             setDocuments(data.documents);
         } catch (error) {
             console.error("Failed to load documents:", error);
+        } finally {
+            setLoadingDocs(false);
         }
     };
 
@@ -165,7 +239,7 @@ export function AdminPanel() {
             const details = await getConversationDetails(companyId, convoId);
             setSelectedConversation(details);
         } catch (error) {
-            alert("Failed to load details: " + error);
+            toast.error("Failed to load details: " + error);
         }
     };
 
@@ -195,10 +269,10 @@ export function AdminPanel() {
             }, 500);
 
             await loadDocuments();
-            alert(`Document uploaded successfully for ${companyId}!`);
+            toast.success(`Document uploaded successfully for ${companyId}!`);
         } catch (error) {
             clearInterval(progressInterval);
-            alert("Upload failed: " + error);
+            toast.error("Upload failed: " + error);
         } finally {
             setUploading(false);
         }
@@ -210,9 +284,9 @@ export function AdminPanel() {
         try {
             await deleteDocument(docId, companyId);
             await loadDocuments();
-            alert("Document deleted successfully!");
+            toast.success("Document deleted successfully!");
         } catch (error) {
-            alert("Delete failed: " + error);
+            toast.error("Delete failed: " + error);
         }
     };
 
@@ -235,7 +309,7 @@ export function AdminPanel() {
             if (file.name.endsWith('.pdf') || file.name.endsWith('.md') || file.name.endsWith('.txt')) {
                 setSelectedFile(file);
             } else {
-                alert('Please upload only PDF, MD, or TXT files');
+                toast.error('Please upload only PDF, MD, or TXT files');
             }
         }
     };
@@ -244,7 +318,7 @@ export function AdminPanel() {
         const ext = filename.split('.').pop()?.toLowerCase();
         switch (ext) {
             case 'pdf': return <FileText size={48} className="text-red-400" color="#f87171" />; // Red for PDF
-            case 'md': return <FileCode size={48} className="text-blue-400" color="#60a5fa" />; // Blue for Markdown
+            case 'md': return <FileCode size={48} className="text-blue-400" color="rgba(255,255,255,0.75)" />; // Blue for Markdown
             case 'txt': return <File size={48} className="text-gray-400" color="#9ca3af" />; // Gray for Text
             default: return <File size={48} className="text-gray-400" color="#9ca3af" />;
         }
@@ -254,227 +328,253 @@ export function AdminPanel() {
         const ext = filename.split('.').pop()?.toLowerCase();
         switch (ext) {
             case 'pdf': return <FileText size={20} color="#f87171" />;
-            case 'md': return <FileCode size={20} color="#60a5fa" />;
+            case 'md': return <FileCode size={20} color="rgba(255,255,255,0.75)" />;
             case 'txt': return <File size={20} color="#9ca3af" />;
             default: return <File size={20} color="#9ca3af" />;
         }
     };
 
-    if (!isAuthenticated) {
-        return <AdminAuth onAuthenticated={(id) => {
-            localStorage.setItem("admin_company_id", id);
-            setCompanyId(id);
-            setIsAuthenticated(true);
-        }} />;
-    }
+    // Admin authentication is now handled by the parent DashboardLayout component.
+    // The companyId is guaranteed to be in localStorage by the time this mounts.
 
-    // Enhanced Admin UI
+    // Enhanced Admin UI without sidebar (provided by DashboardLayout)
     return (
-        <div className="app-container" style={{ overflowY: "auto", display: "block" }}>
-            <header className="admin-header" style={{ background: "rgba(5, 5, 7, 0.6)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "sticky", top: 0, zIndex: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div className="admin-lock-icon" style={{ fontSize: "1.5rem", marginBottom: 0, display: 'flex', alignItems: 'center' }}>
-                        <Lock size={24} color="#60a5fa" />
+        <>
+            <main className="admin-content" style={{ flex: 1, padding: "0 0", width: "100%", maxWidth: "100%", margin: 0 }}>
+
+                {activeTab === 'overview' && (
+                    <div style={{ padding: 0, animation: 'slideUp 0.4s easeOut' }}>
+                        {/* Header */}
+                        <div style={{ marginBottom: 24 }}>
+                            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white' }}>Current Plan</h2>
+                        </div>
+
+                        {loadingOverview ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                                <SkeletonLoader height="400px" borderRadius="16px" />
+                                <SkeletonLoader height="400px" borderRadius="16px" />
+                            </div>
+                        ) : currentSub ? (
+                            <div style={{
+                                background: '#111111',
+                                border: '1px solid rgba(255,255,255,0.05)',
+                                borderRadius: 20,
+                                padding: 48,
+                                display: 'grid',
+                                gridTemplateColumns: 'minmax(350px, 450px) 1fr',
+                                gap: 64,
+                                alignItems: 'start',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                width: '100%'
+                            }}>
+                                {/* Subtle background texture */}
+                                <div style={{ position: 'absolute', top: 0, left: '20%', width: '60%', height: '100%', background: 'radial-gradient(ellipse at top, rgba(255, 255, 255, 0.03), transparent 70%)', pointerEvents: 'none' }} />
+
+                                {/* Left: Current Tier Card */}
+                                <div style={{ zIndex: 1, width: '100%' }}>
+                                    {tiers[currentSub.subscription_tier] && (
+                                        <TierCard
+                                            tierId={currentSub.subscription_tier}
+                                            tierName={tiers[currentSub.subscription_tier].name}
+                                            price={tiers[currentSub.subscription_tier].price_display}
+                                            description={tiers[currentSub.subscription_tier].description}
+                                            isPopular={false}
+                                            isSelected={false}
+                                            currentPlan={true}
+                                            isViewOnly={false}
+                                            enableTilt={false}
+                                            onSelect={() => navigate('/admin/billing')}
+                                            features={[
+                                                {
+                                                    text: tiers[currentSub.subscription_tier].max_documents === -1
+                                                        ? 'Unlimited Documents'
+                                                        : `${tiers[currentSub.subscription_tier].max_documents} Documents`,
+                                                    enabled: true
+                                                },
+                                                {
+                                                    text: tiers[currentSub.subscription_tier].max_queries_per_month === -1
+                                                        ? 'Unlimited Queries'
+                                                        : `${tiers[currentSub.subscription_tier].max_queries_per_month.toLocaleString()} Queries/month`,
+                                                    enabled: true
+                                                },
+                                                { text: 'Advanced Analytics', enabled: tiers[currentSub.subscription_tier].analytics_enabled },
+                                                { text: 'Custom Branding', enabled: tiers[currentSub.subscription_tier].custom_branding },
+                                                { text: 'Priority Support', enabled: currentSub.subscription_tier === 'enterprise' },
+                                            ]}
+                                        />
+                                    )}
+                                    {/* Upgrade Plan button */}
+                                    <button
+                                        onClick={() => navigate('/admin/billing')}
+                                        style={{
+                                            marginTop: 16,
+                                            width: '100%',
+                                            padding: '13px 20px',
+                                            borderRadius: 12,
+                                            background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                            color: '#fff',
+                                            border: 'none',
+                                            fontWeight: 700,
+                                            fontSize: '0.95rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: 8,
+                                            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.35)',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                    >
+                                        <Zap size={16} /> Upgrade Plan
+                                    </button>
+                                </div>
+
+                                {/* Right: Usage Stats */}
+                                <div style={{ zIndex: 1, padding: '16px 0' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+                                        <Sparkles size={22} color="#fbbf24" />
+                                        <span style={{ fontWeight: 700, fontSize: '1.25rem', color: 'white' }}>Usage Statistics</span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                                        {/* Documents */}
+                                        <div style={{ padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: '0.95rem' }}>
+                                                    <FileText size={18} /> <span>Documents</span>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.95rem' }}>
+                                                    <span style={{ color: 'white' }}>{currentSub.usage.documents_count}</span>
+                                                    <span style={{ color: '#64748b' }}>/ {tiers[currentSub.subscription_tier]?.max_documents === -1 ? '∞' : tiers[currentSub.subscription_tier]?.max_documents}</span>
+                                                </div>
+                                            </div>
+                                            {tiers[currentSub.subscription_tier]?.max_documents !== -1 && (
+                                                <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3 }}>
+                                                    <div style={{
+                                                        height: '100%',
+                                                        width: `${Math.min(100, (currentSub.usage.documents_count / (tiers[currentSub.subscription_tier]?.max_documents || 1)) * 100)}%`,
+                                                        background: '#6366f1',
+                                                        borderRadius: 3
+                                                    }} />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Queries */}
+                                        <div style={{ padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: '0.95rem' }}>
+                                                    <Search size={18} /> <span>Monthly Queries</span>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.95rem' }}>
+                                                    <span style={{ color: 'white' }}>{currentSub.usage.queries_this_month}</span>
+                                                    <span style={{ color: '#64748b' }}>/ {tiers[currentSub.subscription_tier]?.max_queries_per_month === -1 ? '∞' : tiers[currentSub.subscription_tier]?.max_queries_per_month}</span>
+                                                </div>
+                                            </div>
+                                            {tiers[currentSub.subscription_tier]?.max_queries_per_month !== -1 && (
+                                                <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3 }}>
+                                                    <div style={{
+                                                        height: '100%',
+                                                        width: `${Math.min(100, (currentSub.usage.queries_this_month / (tiers[currentSub.subscription_tier]?.max_queries_per_month || 1)) * 100)}%`,
+                                                        background: '#10b981',
+                                                        borderRadius: 3
+                                                    }} />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Storage */}
+                                        <div style={{ padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: '0.95rem' }}>
+                                                    <Database size={18} /> <span>Storage Used</span>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.95rem' }}>
+                                                    <span style={{ color: 'white' }}>{currentSub.usage.storage_used_bytes ? (currentSub.usage.storage_used_bytes / 1024).toFixed(2) : 0} KB</span>
+                                                </div>
+                                            </div>
+                                            <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3 }}>
+                                                <div style={{
+                                                    height: '100%',
+                                                    width: `${Math.min(((currentSub.usage.storage_used_bytes || 0) / (1024 * 1024 * 100)) * 100, 100)}%`,
+                                                    background: '#a78bfa',
+                                                    borderRadius: 3
+                                                }} />
+                                            </div>
+                                        </div>
+
+                                        {/* API Keys */}
+                                        <div style={{ padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: '0.95rem' }}>
+                                                    <Key size={18} /> <span>Active API Keys</span>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.95rem' }}>
+                                                    <span style={{ color: 'white' }}>{apiKeys.filter(k => k.status === 'active').length}</span>
+                                                    <span style={{ color: '#64748b' }}>/ {currentSub.usage.max_api_keys === -1 ? '∞' : (currentSub.usage.max_api_keys || 20)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Team Seats */}
+                                        <div style={{ padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: '0.95rem' }}>
+                                                    <Users size={18} /> <span>Team Seats</span>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.95rem' }}>
+                                                    <span style={{ color: 'white' }}>{currentSub.usage.team_members || 1}</span>
+                                                    <span style={{ color: '#64748b' }}>/ {currentSub.usage.max_team_members === -1 ? '∞' : (currentSub.usage.max_team_members || 200)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Tech Specs */}
+                                    {currentSub.tech_specs && (
+                                        <div style={{ marginTop: 32 }}>
+                                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+                                                POWERING YOUR AI
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '12px 16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: 4 }}>Model Precision</div>
+                                                    <div style={{ color: 'white', fontWeight: 600, fontSize: '0.95rem' }}>{currentSub.tech_specs.vector_dimensions}-dim</div>
+                                                </div>
+                                                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '12px 16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: 4 }}>Analytics</div>
+                                                    <div style={{ color: currentSub.tech_specs.analytics_enabled ? '#10b981' : '#9ca3af', fontWeight: 600, fontSize: '0.95rem' }}>
+                                                        {currentSub.tech_specs.analytics_enabled ? 'Active' : 'Disabled'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {currentSub.usage.renews_at && (
+                                                <div style={{ marginTop: 16, fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic' }}>
+                                                    Renews on {currentSub.usage.renews_at}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: 80, color: '#64748b' }}>
+                                Could not load subscription data. Please refresh...
+                            </div>
+                        )}
                     </div>
-                    <h2 className="admin-title" style={{ fontSize: "1.2rem", margin: 0 }}>
-                        CORPWISE <span style={{ opacity: 0.5, fontWeight: 400 }}>Admin Portal</span>
-                    </h2>
-                </div>
-                <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
-                    <div className="status-badge-desktop glass-panel" style={{ color: "#60a5fa", borderColor: "rgba(59, 130, 246, 0.2)", padding: "8px 16px", borderRadius: 99, background: "rgba(59, 130, 246, 0.05)" }}>
-                        Workspace: <span style={{ fontWeight: 600, color: "white" }}>{companyId}</span>
-                    </div>
-                    <button
-                        onClick={() => navigate("/")}
-                        className="glass-btn hover-glow-blue"
-                        style={{
-                            padding: "10px 20px",
-                            borderRadius: 12,
-                            color: "white",
-                            cursor: "pointer",
-                            background: "rgba(255, 255, 255, 0.05)",
-                            border: "1px solid rgba(255, 255, 255, 0.1)",
-                            fontSize: "0.9rem",
-                            fontWeight: 500
-                        }}
-                    >
-                        ← Back to Home
-                    </button>
-                </div>
-            </header>
+                )}
 
-            <div style={{ display: 'flex', minHeight: 'calc(100vh - 73px)' }}>
-                {/* Sidebar Navigation */}
-                <aside style={{
-                    width: 280,
-                    background: "rgba(5, 5, 7, 0.4)",
-                    borderRight: "1px solid rgba(255,255,255,0.08)",
-                    padding: "32px 16px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                    position: "sticky",
-                    top: 73,
-                    height: "calc(100vh - 73px)"
-                }}>
-                    <div style={{
-                        padding: "0 16px 16px 16px",
-                        marginBottom: 16,
-                        borderBottom: "1px solid rgba(255,255,255,0.05)",
-                        color: "#64748b",
-                        fontSize: "0.85rem",
-                        fontWeight: 600,
-                        letterSpacing: "0.05em",
-                        textTransform: "uppercase"
-                    }}>
-                        Management
-                    </div>
-
-                    <button
-                        onClick={() => setActiveTab('documents')}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 12,
-                            padding: "12px 16px",
-                            borderRadius: 12,
-                            background: activeTab === 'documents' ? "rgba(59, 130, 246, 0.1)" : "transparent",
-                            color: activeTab === 'documents' ? "#60a5fa" : "#94a3b8",
-                            border: "1px solid",
-                            borderColor: activeTab === 'documents' ? "rgba(59, 130, 246, 0.2)" : "transparent",
-                            fontSize: "0.95rem",
-                            fontWeight: activeTab === 'documents' ? 600 : 500,
-                            cursor: "pointer",
-                            transition: "all 0.2s ease",
-                            textAlign: "left"
-                        }}
-                        onMouseEnter={(e) => {
-                            if (activeTab !== 'documents') {
-                                e.currentTarget.style.background = "rgba(255,255,255,0.03)";
-                                e.currentTarget.style.color = "#cbd5e1";
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (activeTab !== 'documents') {
-                                e.currentTarget.style.background = "transparent";
-                                e.currentTarget.style.color = "#94a3b8";
-                            }
-                        }}
-                    >
-                        <FileText size={20} /> Documents
-                    </button>
-
-                    <button
-                        onClick={() => setActiveTab('api-keys')}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 12,
-                            padding: "12px 16px",
-                            borderRadius: 12,
-                            background: activeTab === 'api-keys' ? "rgba(59, 130, 246, 0.1)" : "transparent",
-                            color: activeTab === 'api-keys' ? "#60a5fa" : "#94a3b8",
-                            border: "1px solid",
-                            borderColor: activeTab === 'api-keys' ? "rgba(59, 130, 246, 0.2)" : "transparent",
-                            fontSize: "0.95rem",
-                            fontWeight: activeTab === 'api-keys' ? 600 : 500,
-                            cursor: "pointer",
-                            transition: "all 0.2s ease",
-                            textAlign: "left"
-                        }}
-                        onMouseEnter={(e) => {
-                            if (activeTab !== 'api-keys') {
-                                e.currentTarget.style.background = "rgba(255,255,255,0.03)";
-                                e.currentTarget.style.color = "#cbd5e1";
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (activeTab !== 'api-keys') {
-                                e.currentTarget.style.background = "transparent";
-                                e.currentTarget.style.color = "#94a3b8";
-                            }
-                        }}
-                    >
-                        <Key size={20} /> API Keys
-                    </button>
-
-                    <button
-                        onClick={() => setActiveTab('search-debug')}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 12,
-                            padding: "12px 16px",
-                            borderRadius: 12,
-                            background: activeTab === 'search-debug' ? "rgba(16, 185, 129, 0.1)" : "transparent",
-                            color: activeTab === 'search-debug' ? "#34d399" : "#94a3b8",
-                            border: "1px solid",
-                            borderColor: activeTab === 'search-debug' ? "rgba(16, 185, 129, 0.2)" : "transparent",
-                            fontSize: "0.95rem",
-                            fontWeight: activeTab === 'search-debug' ? 600 : 500,
-                            cursor: "pointer",
-                            transition: "all 0.2s ease",
-                            textAlign: "left"
-                        }}
-                        onMouseEnter={(e) => {
-                            if (activeTab !== 'search-debug') {
-                                e.currentTarget.style.background = "rgba(255,255,255,0.03)";
-                                e.currentTarget.style.color = "#cbd5e1";
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (activeTab !== 'search-debug') {
-                                e.currentTarget.style.background = "transparent";
-                                e.currentTarget.style.color = "#94a3b8";
-                            }
-                        }}
-                    >
-                        <Search size={20} /> Test Retrieval
-                    </button>
-
-                    <button
-                        onClick={() => setActiveTab('chat-history')}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 12,
-                            padding: "12px 16px",
-                            borderRadius: 12,
-                            background: activeTab === 'chat-history' ? "rgba(139, 92, 246, 0.1)" : "transparent",
-                            color: activeTab === 'chat-history' ? "#a78bfa" : "#94a3b8",
-                            border: "1px solid",
-                            borderColor: activeTab === 'chat-history' ? "rgba(139, 92, 246, 0.2)" : "transparent",
-                            fontSize: "0.95rem",
-                            fontWeight: activeTab === 'chat-history' ? 600 : 500,
-                            cursor: "pointer",
-                            transition: "all 0.2s ease",
-                            textAlign: "left"
-                        }}
-                        onMouseEnter={(e) => {
-                            if (activeTab !== 'chat-history') {
-                                e.currentTarget.style.background = "rgba(255,255,255,0.03)";
-                                e.currentTarget.style.color = "#cbd5e1";
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (activeTab !== 'chat-history') {
-                                e.currentTarget.style.background = "transparent";
-                                e.currentTarget.style.color = "#94a3b8";
-                            }
-                        }}
-                    >
-                        <MessageSquare size={20} /> Chat History
-                    </button>
-                </aside>
-
-                <main className="admin-content" style={{ flex: 1, padding: "40px", maxWidth: activeTab === 'search-debug' ? "100%" : 1200, margin: "0 auto", width: "100%", display: activeTab === 'search-debug' ? "block" : undefined }}>
-
-                    {activeTab === 'documents' && (
+                {
+                    activeTab === 'documents' && (
                         <>
                             {/* Section 1: Upload */}
                             <section className="glass-card" style={{ padding: 32, marginBottom: 32 }}>
                                 <h3 style={{ fontSize: "1.25rem", marginBottom: 20, fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
-                                    <Upload size={24} color="#60a5fa" /> Upload Knowledge
+                                    <Upload size={24} color="rgba(255,255,255,0.75)" /> Upload Knowledge
                                 </h3>
                                 <p style={{ color: "#94a3b8", marginBottom: 32, fontSize: "0.95rem", maxWidth: 600 }}>
                                     Ingest PDF, Markdown, or Text documents into the <strong>{companyId}</strong> vector store.
@@ -492,8 +592,8 @@ export function AdminPanel() {
                                             flexDirection: "column",
                                             justifyContent: "center",
                                             alignItems: "center",
-                                            border: isDragging ? "2px solid #3b82f6" : "2px dashed rgba(255,255,255,0.15)",
-                                            background: isDragging ? "rgba(59, 130, 246, 0.1)" : "rgba(255,255,255,0.02)",
+                                            border: isDragging ? "2px solid #e2e8f0" : "2px dashed rgba(255,255,255,0.15)",
+                                            background: isDragging ? "rgba(255, 255, 255, 0.1)" : "rgba(255,255,255,0.02)",
                                             transition: "all 0.3s ease",
                                             cursor: "pointer",
                                             borderRadius: 16,
@@ -506,12 +606,12 @@ export function AdminPanel() {
                                         onDragLeave={handleDragLeave}
                                         onDrop={handleDrop}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.5)";
+                                            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.5)";
                                             e.currentTarget.style.background = "rgba(255,255,255,0.05)";
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.borderColor = isDragging ? "#3b82f6" : "rgba(255,255,255,0.15)";
-                                            e.currentTarget.style.background = isDragging ? "rgba(59, 130, 246, 0.1)" : "rgba(255,255,255,0.02)";
+                                            e.currentTarget.style.borderColor = isDragging ? "#e2e8f0" : "rgba(255,255,255,0.15)";
+                                            e.currentTarget.style.background = isDragging ? "rgba(255, 255, 255, 0.1)" : "rgba(255,255,255,0.02)";
                                         }}
                                     >
                                         <input
@@ -526,7 +626,7 @@ export function AdminPanel() {
                                                 <div style={{ marginBottom: 16, filter: "drop-shadow(0 10px 20px rgba(0,0,0,0.5))" }}>
                                                     {getFileIcon(selectedFile.name)}
                                                 </div>
-                                                <div style={{ fontWeight: 700, color: "#60a5fa", fontSize: "1.1rem" }}>{selectedFile.name}</div>
+                                                <div style={{ fontWeight: 700, color: "rgba(255,255,255,0.75)", fontSize: "1.1rem" }}>{selectedFile.name}</div>
                                                 <div style={{ fontSize: "0.9rem", color: "#64748b", marginTop: 6, fontFamily: "monospace" }}>
                                                     {(selectedFile.size / 1024).toFixed(1)} KB
                                                 </div>
@@ -553,7 +653,7 @@ export function AdminPanel() {
                                                     opacity: isDragging ? 1 : 0.8,
                                                     transform: isDragging ? "scale(1.1)" : "scale(1)",
                                                     transition: "all 0.3s ease",
-                                                    color: isDragging ? "#3b82f6" : "#64748b"
+                                                    color: isDragging ? "#e2e8f0" : "#64748b"
                                                 }}>
                                                     {isDragging ? <FolderOpen size={64} /> : <CloudUpload size={64} />}
                                                 </div>
@@ -604,7 +704,7 @@ export function AdminPanel() {
                                                 width: "100%",
                                                 marginTop: "auto",
                                                 padding: "20px",
-                                                background: !selectedFile || uploading ? "rgba(255,255,255,0.05)" : "linear-gradient(135deg, #3b82f6, #2563eb)",
+                                                background: !selectedFile || uploading ? "rgba(255,255,255,0.05)" : "linear-gradient(135deg, #6366f1, #7c3aed)",
                                                 color: !selectedFile || uploading ? "#64748b" : "white",
                                                 border: !selectedFile || uploading ? "1px solid rgba(255,255,255,0.05)" : "none",
                                                 borderRadius: 16,
@@ -612,7 +712,7 @@ export function AdminPanel() {
                                                 fontSize: "1rem",
                                                 cursor: !selectedFile || uploading ? "not-allowed" : "pointer",
                                                 transition: "all 0.3s",
-                                                boxShadow: !selectedFile || uploading ? "none" : "0 8px 30px rgba(37, 99, 235, 0.4)",
+                                                boxShadow: !selectedFile || uploading ? "none" : "0 8px 30px rgba(99, 102, 241, 0.35)",
                                                 opacity: !selectedFile || uploading ? 0.7 : 1,
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -645,7 +745,7 @@ export function AdminPanel() {
                                             <span style={{ fontSize: "0.9rem", color: "#94a3b8", fontWeight: 600 }}>
                                                 Uploading & Processing
                                             </span>
-                                            <span style={{ fontSize: "0.9rem", color: "#60a5fa", fontWeight: 700 }}>
+                                            <span style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.75)", fontWeight: 700 }}>
                                                 {uploadProgress}%
                                             </span>
                                         </div>
@@ -659,12 +759,12 @@ export function AdminPanel() {
                                             <div style={{
                                                 height: "100%",
                                                 width: `${uploadProgress}%`,
-                                                background: "linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6)",
+                                                background: "linear-gradient(90deg, #6366f1, #a78bfa, #6366f1)",
                                                 backgroundSize: "200% 100%",
                                                 animation: "shimmer 2s infinite linear",
                                                 transition: "width 0.3s ease",
                                                 borderRadius: 99,
-                                                boxShadow: "0 0 10px rgba(59, 130, 246, 0.5)"
+                                                boxShadow: "0 0 10px rgba(255, 255, 255, 0.5)"
                                             }} />
                                         </div>
                                         <style>{`
@@ -685,17 +785,23 @@ export function AdminPanel() {
                             <section className="glass-card" style={{ padding: 32 }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
                                     <h3 style={{ fontSize: "1.25rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
-                                        <Database size={24} color="#60a5fa" /> Repository Index
+                                        <Database size={24} color="rgba(255,255,255,0.75)" /> Repository Index
                                         <span style={{ fontSize: "0.9rem", color: "#64748b", fontWeight: 400, background: "rgba(255,255,255,0.05)", padding: "4px 10px", borderRadius: 99 }}>
                                             {documents.length} files
                                         </span>
                                     </h3>
-                                    <button onClick={loadDocuments} className="glass-btn" style={{ padding: "10px 16px", borderRadius: 8, color: "#60a5fa", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: 6 }}>
+                                    <button onClick={loadDocuments} className="glass-btn" style={{ padding: "10px 16px", borderRadius: 8, color: "rgba(255,255,255,0.75)", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: 6 }}>
                                         <RefreshCw size={16} /> Refresh List
                                     </button>
                                 </div>
 
-                                {documents.length === 0 ? (
+                                {loadingDocs ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        {[...Array(3)].map((_, i) => (
+                                            <SkeletonLoader key={i} height="80px" borderRadius="12px" />
+                                        ))}
+                                    </div>
+                                ) : documents.length === 0 ? (
                                     <div style={{ textAlign: "center", padding: 80, color: "#64748b", border: "2px dashed rgba(255,255,255,0.05)", borderRadius: 16 }}>
                                         <div style={{ marginBottom: 16, opacity: 0.3, display: 'flex', justifyContent: 'center' }}>
                                             <Inbox size={64} />
@@ -771,11 +877,11 @@ export function AdminPanel() {
                                                                     fontSize: "0.75rem",
                                                                     fontWeight: 700,
                                                                     background: doc.dimensions === 1024 ? "rgba(251, 191, 36, 0.2)" :
-                                                                        doc.dimensions === 768 ? "rgba(139, 92, 246, 0.2)" : "rgba(148, 163, 184, 0.2)",
+                                                                        doc.dimensions === 768 ? "rgba(255, 255, 255, 0.2)" : "rgba(148, 163, 184, 0.2)",
                                                                     color: doc.dimensions === 1024 ? "#fbbf24" :
-                                                                        doc.dimensions === 768 ? "#a78bfa" : "#94a3b8",
+                                                                        doc.dimensions === 768 ? "rgba(255,255,255,0.5)" : "#94a3b8",
                                                                     border: `1px solid ${doc.dimensions === 1024 ? "rgba(251, 191, 36, 0.3)" :
-                                                                        doc.dimensions === 768 ? "rgba(139, 92, 246, 0.3)" : "rgba(148, 163, 184, 0.3)"}`
+                                                                        doc.dimensions === 768 ? "rgba(255, 255, 255, 0.3)" : "rgba(148, 163, 184, 0.3)"}`
                                                                 }}>
                                                                     {doc.dimensions}d
                                                                 </span>
@@ -806,14 +912,16 @@ export function AdminPanel() {
                                 )}
                             </section>
                         </>
-                    )}
+                    )
+                }
 
-                    {activeTab === 'api-keys' && (
-                        <section className="glass-card" style={{ padding: 32 }}>
+                {
+                    activeTab === 'api-keys' && (
+                        <section style={{ width: '100%' }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
                                 <div>
                                     <h3 style={{ fontSize: "1.25rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
-                                        <Shield size={24} color="#60a5fa" /> API Access Management
+                                        <Shield size={24} color="rgba(255,255,255,0.75)" /> API Access Management
                                     </h3>
                                     <p style={{ color: "#94a3b8", marginTop: 8, fontSize: "0.95rem" }}>
                                         Manage API keys for accessing the CORPWISE platform programmatically.
@@ -821,142 +929,262 @@ export function AdminPanel() {
                                 </div>
                             </div>
 
-                            {/* Generate New Key */}
-                            <div style={{ background: "rgba(255,255,255,0.02)", padding: 24, borderRadius: 16, marginBottom: 32, border: "1px solid rgba(255,255,255,0.05)" }}>
-                                <h4 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 16 }}>Create New API Key</h4>
-                                <div style={{ display: "flex", gap: 16, alignItems: 'center' }}>
-                                    <input
-                                        type="text"
-                                        placeholder="Key Name (e.g. Production App)"
-                                        value={newKeyName}
-                                        onChange={(e) => setNewKeyName(e.target.value)}
-                                        style={{
-                                            flex: 1,
-                                            padding: "12px 16px",
-                                            borderRadius: 12,
-                                            border: "1px solid rgba(255,255,255,0.1)",
-                                            background: "rgba(0,0,0,0.2)",
-                                            color: "white",
-                                            fontSize: "0.95rem"
-                                        }}
-                                    />
-                                    <button
-                                        onClick={handleGenerateKey}
-                                        className="glass-btn hover-glow-blue"
-                                        style={{
-                                            padding: "12px 24px",
-                                            borderRadius: 12,
-                                            background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-                                            color: "white",
-                                            border: "none",
-                                            cursor: "pointer",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: 8,
-                                            fontWeight: 600
-                                        }}
-                                    >
-                                        <Plus size={18} /> Generate Key
-                                    </button>
-                                </div>
-                                {generatedKey && (
-                                    <div style={{ marginTop: 24, padding: 20, background: "rgba(16, 185, 129, 0.1)", borderRadius: 12, border: "1px solid rgba(16, 185, 129, 0.2)" }}>
-                                        <div style={{ color: "#34d399", fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
-                                            <Shield size={18} /> New API Key Generated
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 32, marginBottom: 32 }}>
+                                {/* Generate New Key */}
+                                <div style={{ width: "100%", background: "rgba(255,255,255,0.02)", padding: 24, borderRadius: 16, border: "1px solid rgba(255,255,255,0.05)", display: "flex", flexDirection: "column" }}>
+                                    <h4 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+                                        <Key size={20} color="rgba(255,255,255,0.75)" /> Create New API Key
+                                    </h4>
+                                    <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: "auto" }}>
+                                        <input
+                                            type="text"
+                                            placeholder="Key Name (e.g. Production App)"
+                                            value={newKeyName}
+                                            onChange={(e) => setNewKeyName(e.target.value)}
+                                            style={{
+                                                flex: 1,
+                                                minWidth: 200,
+                                                padding: "12px 16px",
+                                                borderRadius: 12,
+                                                border: "1px solid rgba(255,255,255,0.1)",
+                                                background: "rgba(0,0,0,0.2)",
+                                                color: "white",
+                                                fontSize: "0.95rem"
+                                            }}
+                                        />
+                                        <button
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.transform = "translateY(-2px)";
+                                                e.currentTarget.style.background = "#ffffff";
+                                                e.currentTarget.style.color = "#000000";
+                                                e.currentTarget.style.borderColor = "#ffffff";
+                                                e.currentTarget.style.boxShadow = "0 0 30px rgba(255, 255, 255, 0.6)";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.transform = "translateY(0)";
+                                                e.currentTarget.style.background = "rgba(255, 255, 255, 0.03)";
+                                                e.currentTarget.style.color = "#ffffff";
+                                                e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                                                e.currentTarget.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.2)";
+                                            }}
+                                            onClick={handleGenerateKey}
+                                            className="glass-btn hover-glow-white"
+                                            style={{
+                                                padding: "12px 24px",
+                                                borderRadius: 12,
+                                                background: "rgba(255, 255, 255, 0.03)",
+                                                color: "#ffffff",
+                                                border: "1px solid rgba(255, 255, 255, 0.1)",
+                                                fontFamily: "var(--font-body)",
+                                                cursor: "pointer",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 8,
+                                                fontWeight: 500,
+                                                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+                                                backdropFilter: "blur(10px)",
+                                                WebkitBackdropFilter: "blur(10px)",
+                                                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+                                            }}
+                                        >
+                                            <Plus size={18} /> Generate Key
+                                        </button>
+                                    </div>
+                                    {generatedKey && (
+                                        <div style={{ marginTop: 24, padding: 20, background: "rgba(16, 185, 129, 0.1)", borderRadius: 12, border: "1px solid rgba(16, 185, 129, 0.2)" }}>
+                                            <div style={{ color: "#34d399", fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                                                <Shield size={18} /> New API Key Generated
+                                            </div>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                                <code style={{ flex: 1, background: "rgba(0,0,0,0.3)", padding: "12px", borderRadius: 8, fontFamily: "monospace", color: "white", wordBreak: "break-all" }}>
+                                                    {generatedKey.key}
+                                                </code>
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(generatedKey.key);
+                                                        localStorage.setItem('corpwise_api_key', generatedKey.key);
+                                                        alert("Copied & saved! The chat widget on this site will now use this key.");
+                                                    }}
+                                                    style={{ padding: "12px", borderRadius: 8, background: "rgba(255,255,255,0.1)", border: "none", color: "white", cursor: "pointer" }}
+                                                >
+                                                    Copy
+                                                </button>
+                                            </div>
+                                            <p style={{ color: "#d1fae5", fontSize: "0.85rem", marginTop: 12 }}>
+                                                ⚠️ Copy this key now. You won't be able to see it again!
+                                            </p>
                                         </div>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                            <code style={{ flex: 1, background: "rgba(0,0,0,0.3)", padding: "12px", borderRadius: 8, fontFamily: "monospace", color: "white", wordBreak: "break-all" }}>
-                                                {generatedKey.key}
-                                            </code>
+                                    )}
+                                </div>
+
+                                {/* Global Embed Code Snippet */}
+                                <div style={{ width: "100%", background: "rgba(255,255,255,0.02)", padding: 32, borderRadius: 16, border: "1px solid rgba(255,255,255,0.05)" }}>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                                        {/* Instructions */}
+                                        <div>
+                                            <h4 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 16, display: "flex", alignItems: "center", gap: 10, color: "white" }}>
+                                                <FileCode size={22} color="#fbbf24" /> Website Integration Code
+                                            </h4>
+                                            <p style={{ color: "#94a3b8", fontSize: "0.95rem", lineHeight: 1.6, maxWidth: "800px" }}>
+                                                To add the CORPWISE AI chat widget to your website, place this code just before the closing <code style={{ background: "rgba(255,255,255,0.1)", padding: "2px 6px", borderRadius: 4 }}>&lt;/body&gt;</code> tag on your pages. It automatically connects the widget to your company's isolated knowledge base.
+                                            </p>
+                                        </div>
+
+                                        {/* Snippet Block (FULL WIDTH) */}
+                                        <div style={{ position: "relative", width: "100%" }}>
+                                            <pre style={{
+                                                background: "rgba(0,0,0,0.6)",
+                                                padding: 24,
+                                                borderRadius: 12,
+                                                overflowX: "auto",
+                                                border: "1px solid rgba(255,255,255,0.1)",
+                                                fontFamily: "monospace",
+                                                fontSize: "0.9rem",
+                                                color: "#e2e8f0",
+                                                lineHeight: 1.6,
+                                                margin: 0,
+                                                width: "100%"
+                                            }}>
+                                                {`<!-- CORPWISE AI Search Widget Integration -->
+<script>
+  window.CORPWISE_COMPANY_ID = "${companyId}";
+  window.CORPWISE_API_KEY = "${generatedKey ? generatedKey.key : "YOUR_API_KEY_HERE"}";
+</script>
+<script src="https://corpwise.app/widget.js"></script>`}
+                                            </pre>
                                             <button
-                                                onClick={() => { navigator.clipboard.writeText(generatedKey.key); alert("Copied!"); }}
-                                                style={{ padding: "12px", borderRadius: 8, background: "rgba(255,255,255,0.1)", border: "none", color: "white", cursor: "pointer" }}
+                                                onClick={() => {
+                                                    const code = `<!-- CORPWISE AI Search Widget Integration -->\n<script>\n  window.CORPWISE_COMPANY_ID = "${companyId}";\n  window.CORPWISE_API_KEY = "${generatedKey ? generatedKey.key : "YOUR_API_KEY_HERE"}";\n</script>\n<script src="https://corpwise.app/widget.js"></script>`;
+                                                    navigator.clipboard.writeText(code);
+                                                    toast.success("Embed code copied to clipboard!");
+                                                }}
+                                                style={{
+                                                    position: "absolute",
+                                                    top: 16,
+                                                    right: 16,
+                                                    padding: "10px 16px",
+                                                    borderRadius: 8,
+                                                    background: "rgba(255,255,255,0.1)",
+                                                    border: "none",
+                                                    color: "white",
+                                                    cursor: "pointer",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 8,
+                                                    fontSize: "0.85rem",
+                                                    fontWeight: 600
+                                                }}
+                                                className="glass-btn hover-glow-white"
                                             >
-                                                Copy
+                                                <Copy size={16} /> Copy Code
                                             </button>
                                         </div>
-                                        <p style={{ color: "#d1fae5", fontSize: "0.85rem", marginTop: 12 }}>
-                                            ⚠️ Copy this key now. You won't be able to see it again!
-                                        </p>
+
+                                        {/* Warnings Below Snippet */}
+                                        {!generatedKey && (
+                                            <div style={{ background: "rgba(251, 191, 36, 0.1)", border: "1px solid rgba(251, 191, 36, 0.2)", padding: 16, borderRadius: 8, width: "100%" }}>
+                                                <p style={{ color: "#fbbf24", fontSize: "0.9rem", margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                                                    <span style={{ fontSize: "1.2rem" }}>ⓘ</span> Generate an API key above to see your embed code populated with a real key.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+                                </div>
                             </div>
 
                             {/* API Keys List */}
-                            {apiKeys.length === 0 ? (
+                            {loadingKeys ? (
+                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                    {[...Array(2)].map((_, i) => (
+                                        <SkeletonLoader key={i} height="120px" borderRadius="16px" />
+                                    ))}
+                                </div>
+                            ) : apiKeys.length === 0 ? (
                                 <div style={{ textAlign: "center", padding: 40, color: "#64748b", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 12 }}>
                                     No API keys found. Generate one to get started.
                                 </div>
                             ) : (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                                <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
                                     {apiKeys.map((key) => (
                                         <div key={key.key_id} className="glass-btn" style={{
-                                            display: "flex", justifyContent: "space-between", alignItems: "center",
-                                            padding: "16px 20px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)",
-                                            background: "rgba(255,255,255,0.02)"
+                                            flex: '1 1 300px',
+                                            padding: "24px",
+                                            borderRadius: 16,
+                                            border: `1px solid ${key.status === 'active' ? 'rgba(52, 211, 153, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                                            background: key.status === 'active' ? "rgba(52, 211, 153, 0.04)" : "rgba(255,255,255,0.02)",
+                                            display: 'flex', flexDirection: 'column', gap: 16
                                         }}>
-                                            <div>
-                                                <div style={{ color: "white", fontWeight: 600, fontSize: "0.95rem" }}>{key.name}</div>
-                                                <div style={{ color: "#64748b", fontSize: "0.85rem", fontFamily: "monospace", marginTop: 4 }}>
-                                                    Prefix: <span style={{ color: "#cbd5e1" }}>{key.prefix}</span> • Created: {new Date(key.created_at).toLocaleDateString()}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                <div>
+                                                    <div style={{ color: "white", fontWeight: 700, fontSize: "1rem", marginBottom: 4 }}>{key.name}</div>
+                                                    <div style={{ color: "#64748b", fontSize: "0.8rem", fontFamily: "monospace" }}>
+                                                        {key.prefix}••••••••
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                                 <span style={{
-                                                    fontSize: "0.8rem",
-                                                    padding: "4px 8px",
-                                                    borderRadius: 6,
-                                                    background: key.status === "active" ? "rgba(52, 211, 153, 0.1)" : "rgba(239, 68, 68, 0.1)",
+                                                    fontSize: "0.75rem",
+                                                    padding: "4px 10px",
+                                                    borderRadius: 99,
+                                                    background: key.status === "active" ? "rgba(52, 211, 153, 0.15)" : "rgba(239, 68, 68, 0.1)",
                                                     color: key.status === "active" ? "#34d399" : "#ef4444",
-                                                    border: `1px solid ${key.status === "active" ? "rgba(52, 211, 153, 0.2)" : "rgba(239, 68, 68, 0.2)"}`
+                                                    border: `1px solid ${key.status === "active" ? "rgba(52, 211, 153, 0.3)" : "rgba(239, 68, 68, 0.2)"}`
                                                 }}>
                                                     {key.status.toUpperCase()}
                                                 </span>
-                                                <button
-                                                    onClick={() => handleRevokeKey(key.key_id)}
-                                                    className="glass-btn"
-                                                    style={{
-                                                        padding: "8px 12px",
-                                                        borderRadius: 8,
-                                                        color: "#ef4444",
-                                                        border: "1px solid rgba(239, 68, 68, 0.2)",
-                                                        background: "rgba(239, 68, 68, 0.05)",
-                                                        cursor: "pointer",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        gap: 6
-                                                    }}
-                                                >
-                                                    <Trash2 size={16} /> Revoke
-                                                </button>
                                             </div>
+                                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                                Created {new Date(key.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                            </div>
+                                            <button
+                                                onClick={() => handleRevokeKey(key.key_id)}
+                                                className="glass-btn"
+                                                style={{
+                                                    padding: "8px 16px",
+                                                    borderRadius: 8,
+                                                    color: "#ef4444",
+                                                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                                                    background: "rgba(239, 68, 68, 0.05)",
+                                                    cursor: "pointer",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 6,
+                                                    fontSize: '0.85rem',
+                                                    width: 'fit-content'
+                                                }}
+                                            >
+                                                <Trash2 size={14} /> Revoke Key
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
                             )}
                         </section>
-                    )}
+                    )
+                }
 
-                    {activeTab === 'chat-history' && (
-                        <section className="glass-card" style={{ padding: 32 }}>
+                {
+                    activeTab === 'chat-history' && (
+                        <section style={{ width: '100%' }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
                                 <div>
                                     <h3 style={{ fontSize: "1.25rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
-                                        <MessageSquare size={24} color="#a78bfa" /> Chat Logs
+                                        <MessageSquare size={24} color="rgba(255,255,255,0.5)" /> Chat Logs
                                     </h3>
                                     <p style={{ color: "#94a3b8", marginTop: 8, fontSize: "0.95rem" }}>
                                         Review user conversations to improve retrieval and answers.
                                     </p>
                                 </div>
-                                <button onClick={loadConversations} className="glass-btn" style={{ padding: "10px 16px", borderRadius: 8, color: "#a78bfa", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: 6 }}>
+                                <button onClick={loadConversations} className="glass-btn" style={{ padding: "10px 16px", borderRadius: 8, color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: 6 }}>
                                     <RefreshCw size={16} /> Refresh
                                 </button>
                             </div>
 
                             {chatLoading && conversations.length === 0 ? (
-                                <div style={{ textAlign: "center", padding: 80, color: "#64748b" }}>
-                                    <Loader2 className="animate-spin" size={32} />
-                                    <div style={{ marginTop: 16 }}>Loading history...</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <SkeletonLoader height="40px" borderRadius="8px" />
+                                    <SkeletonLoader height="60px" borderRadius="8px" />
+                                    <SkeletonLoader height="60px" borderRadius="8px" />
+                                    <SkeletonLoader height="60px" borderRadius="8px" />
                                 </div>
                             ) : conversations.length === 0 ? (
                                 <div style={{ textAlign: "center", padding: 80, color: "#64748b", border: "2px dashed rgba(255,255,255,0.05)", borderRadius: 16 }}>
@@ -983,8 +1211,8 @@ export function AdminPanel() {
                                                 <tr key={convo.conversation_id} style={{ background: "rgba(255,255,255,0.02)", transition: "all 0.2s" }} className="hover-glass-row">
                                                     <td style={{ padding: "16px", borderRadius: "8px 0 0 8px", color: "white", fontWeight: 500 }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                            <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, background: "rgba(167, 139, 250, 0.1)", borderRadius: 6 }}>
-                                                                <MessageSquare size={14} color="#a78bfa" />
+                                                            <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, background: "rgba(255, 255, 255, 0.1)", borderRadius: 6 }}>
+                                                                <MessageSquare size={14} color="rgba(255,255,255,0.5)" />
                                                             </div>
                                                             <div style={{ display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" }}>
                                                                 <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "200px", lineHeight: "1.2" }}>
@@ -1012,9 +1240,9 @@ export function AdminPanel() {
                                                             style={{
                                                                 padding: "6px 12px",
                                                                 borderRadius: 8,
-                                                                color: "#a78bfa",
-                                                                border: "1px solid rgba(167, 139, 250, 0.2)",
-                                                                background: "rgba(167, 139, 250, 0.05)",
+                                                                color: "rgba(255,255,255,0.5)",
+                                                                border: "1px solid rgba(255, 255, 255, 0.2)",
+                                                                background: "rgba(255, 255, 255, 0.05)",
                                                                 cursor: "pointer",
                                                                 fontSize: "0.85rem"
                                                             }}
@@ -1079,9 +1307,9 @@ export function AdminPanel() {
                                                     maxWidth: "80%"
                                                 }}>
                                                     <div style={{
-                                                        background: msg.role === 'user' ? "rgba(139, 92, 246, 0.2)" : "rgba(255,255,255,0.05)",
+                                                        background: msg.role === 'user' ? "rgba(255, 255, 255, 0.2)" : "rgba(255,255,255,0.05)",
                                                         padding: "12px 16px", borderRadius: 12,
-                                                        border: `1px solid ${msg.role === 'user' ? "rgba(139, 92, 246, 0.2)" : "rgba(255,255,255,0.05)"}`,
+                                                        border: `1px solid ${msg.role === 'user' ? "rgba(255, 255, 255, 0.2)" : "rgba(255,255,255,0.05)"}`,
                                                         color: "white", fontSize: "0.95rem", lineHeight: 1.5
                                                     }}>
                                                         {msg.content}
@@ -1096,9 +1324,11 @@ export function AdminPanel() {
                                 </div>
                             )}
                         </section>
-                    )}
+                    )
+                }
 
-                    {activeTab === 'search-debug' && (
+                {
+                    activeTab === 'search-debug' && (
                         <section className="glass-card" style={{ padding: 32 }}>
                             <div style={{ marginBottom: 32 }}>
                                 <h3 style={{ fontSize: "1.25rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
@@ -1109,7 +1339,7 @@ export function AdminPanel() {
                                 </p>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
+                            <div style={{ display: 'flex', gap: 16, marginBottom: 32, alignItems: 'stretch' }}>
                                 <input
                                     type="text"
                                     placeholder="Enter test query (e.g. 'What is the refund policy?')"
@@ -1121,7 +1351,7 @@ export function AdminPanel() {
                                         }
                                     }}
                                     style={{
-                                        width: "100%",
+                                        flex: 1,
                                         padding: "16px",
                                         borderRadius: 12,
                                         background: "rgba(255,255,255,0.05)",
@@ -1131,29 +1361,28 @@ export function AdminPanel() {
                                         fontFamily: "inherit"
                                     }}
                                 />
-                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                    <button
-                                        onClick={handleSearch}
-                                        disabled={searchLoading || !searchQuery.trim()}
-                                        className="glass-btn hover-glow-green"
-                                        style={{
-                                            padding: "12px 32px",
-                                            borderRadius: 12,
-                                            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                                            color: "white",
-                                            fontWeight: 600,
-                                            border: "none",
-                                            cursor: searchLoading ? "not-allowed" : "pointer",
-                                            display: "flex",
-                                            alignItems: 'center',
-                                            gap: 8,
-                                            opacity: searchLoading ? 0.7 : 1
-                                        }}
-                                    >
-                                        {searchLoading ? <Loader2 className="animate-spin" /> : <Search size={20} />}
-                                        Test Retrieval
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={handleSearch}
+                                    disabled={searchLoading || !searchQuery.trim()}
+                                    className="glass-btn hover-glow-green"
+                                    style={{
+                                        flexShrink: 0,
+                                        padding: "0 32px",
+                                        borderRadius: 12,
+                                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                        color: "white",
+                                        fontWeight: 600,
+                                        border: "none",
+                                        cursor: searchLoading ? "not-allowed" : "pointer",
+                                        display: "flex",
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        opacity: searchLoading ? 0.7 : 1
+                                    }}
+                                >
+                                    {searchLoading ? <Loader2 className="animate-spin" /> : <Search size={20} />}
+                                    Test Retrieval
+                                </button>
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1201,9 +1430,287 @@ export function AdminPanel() {
                                 )}
                             </div>
                         </section>
-                    )}
-                </main>
-            </div>
+                    )
+                }
+
+                {
+                    activeTab === 'billing' && (
+                        <div style={{ padding: 0, animation: 'slideUp 0.4s ease' }}>
+                            {/* Header with Help Me Choose button */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, flexWrap: 'wrap', gap: 16 }}>
+                                <div>
+                                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <CreditCard size={26} color="#818cf8" /> Choose Your Plan
+                                    </h2>
+                                    <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginTop: 8, maxWidth: 560 }}>
+                                        {currentSub
+                                            ? `You're currently on the ${currentSub.subscription_tier} plan. Select a different plan to switch.`
+                                            : 'Select the perfect subscription tier for your organization.'
+                                        }
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setShowOnboarding(!showOnboarding)}
+                                    style={{
+                                        padding: '10px 20px',
+                                        borderRadius: 12,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        background: showOnboarding ? 'rgba(234, 179, 8, 0.15)' : 'rgba(234, 179, 8, 0.08)',
+                                        border: `1px solid ${showOnboarding ? 'rgba(234, 179, 8, 0.4)' : 'rgba(234, 179, 8, 0.2)'}`,
+                                        color: '#eab308',
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        fontSize: '0.9rem',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                >
+                                    <Lightbulb size={18} />
+                                    {showOnboarding ? 'Hide Wizard' : 'Help Me Choose'}
+                                </button>
+                            </div>
+
+                            {/* OnboardingStepper Wizard (Modal Overlay) */}
+                            {showOnboarding && (
+                                <div style={{
+                                    position: 'fixed',
+                                    inset: 0,
+                                    zIndex: 9999,
+                                    background: 'rgba(0, 0, 0, 0.75)',
+                                    backdropFilter: 'blur(8px)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '20px' // Ensure padding so modal doesn't touch screen edges
+                                }}>
+                                    <div className="onboarding-section" style={{
+                                        background: '#121216', // Darker elegant background
+                                        border: '1px solid rgba(234, 179, 8, 0.25)',
+                                        borderRadius: 20, // Match modern rounded corners
+                                        boxShadow: '0 25px 50px rgba(0,0,0,0.6)',
+                                        padding: '24px 24px 8px',
+                                        position: 'relative',
+                                        width: '100%',
+                                        maxWidth: '700px', // Restrict max width of the wizard modal
+                                        maxHeight: '90vh',
+                                        overflowY: 'auto' // Handle tall step content
+                                    }}>
+                                        <button
+                                            onClick={() => setShowOnboarding(false)}
+                                            style={{
+                                                position: 'absolute',
+                                                top: 16,
+                                                right: 16,
+                                                background: 'rgba(255,255,255,0.08)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '50%',
+                                                width: 32,
+                                                height: 32,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: '#fff',
+                                                cursor: 'pointer',
+                                                zIndex: 10,
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                            }}
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                        <OnboardingStepper
+                                            onComplete={(data: any, tier: string) => {
+                                                setRecommendedTier(tier);
+                                                setSelectedTierId(tier);
+                                                setShowOnboarding(false);
+                                                toast.success(`We recommend the ${tiers[tier]?.name || tier} plan for your needs!`);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Recommended tier banner */}
+                            {recommendedTier && tiers[recommendedTier] && (
+                                <div style={{
+                                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.08))',
+                                    border: '1px solid rgba(99, 102, 241, 0.25)',
+                                    borderRadius: 12,
+                                    padding: '14px 20px',
+                                    marginBottom: 24,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 12,
+                                    fontSize: '0.95rem'
+                                }}>
+                                    <Sparkles size={20} color="#818cf8" />
+                                    <span style={{ color: '#e2e8f0' }}>
+                                        Based on your answers, we recommend the{' '}
+                                        <strong style={{ color: '#a5b4fc' }}>{tiers[recommendedTier].name}</strong> plan.
+                                    </span>
+                                    <button
+                                        onClick={() => setRecommendedTier(null)}
+                                        style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Tier Cards Grid */}
+                            {loadingOverview ? (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginTop: 16 }}>
+                                    <SkeletonLoader height="480px" borderRadius="16px" />
+                                    <SkeletonLoader height="480px" borderRadius="16px" />
+                                    <SkeletonLoader height="480px" borderRadius="16px" />
+                                </div>
+                            ) : Object.keys(tiers).length > 0 ? (
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: `repeat(${Math.min(Object.keys(tiers).length, 3)}, 1fr)`,
+                                    gap: 24,
+                                    marginTop: 16,
+                                    alignItems: 'start'
+                                }}>
+                                    {Object.entries(tiers).map(([tierId, tier]) => {
+                                        const isCurrent = currentSub?.subscription_tier === tierId;
+                                        const isRecommended = recommendedTier === tierId;
+                                        return (
+                                            <div key={tierId} style={{
+                                                position: 'relative',
+                                                ...(isRecommended && !isCurrent ? {
+                                                    boxShadow: '0 0 30px rgba(99, 102, 241, 0.2)',
+                                                    borderRadius: 20
+                                                } : {})
+                                            }}>
+                                                {isRecommended && !isCurrent && (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: -12,
+                                                        left: '50%',
+                                                        transform: 'translateX(-50%)',
+                                                        background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                                        borderRadius: 99,
+                                                        padding: '4px 14px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 700,
+                                                        color: '#fff',
+                                                        zIndex: 10,
+                                                        whiteSpace: 'nowrap',
+                                                        letterSpacing: '0.03em',
+                                                        boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)'
+                                                    }}>
+                                                        ✨ Recommended
+                                                    </div>
+                                                )}
+                                                <TierCard
+                                                    tierId={tierId}
+                                                    tierName={tier.name}
+                                                    price={tier.price_display}
+                                                    description={tier.description}
+                                                    isPopular={tierId === 'professional'}
+                                                    isSelected={selectedTierId === tierId}
+                                                    currentPlan={isCurrent}
+                                                    isViewOnly={false}
+                                                    enableTilt={true}
+                                                    onSelect={async (id: string) => {
+                                                        if (isCurrent) return;
+                                                        setSelectedTierId(id);
+                                                        setTierUpdating(true);
+                                                        try {
+                                                            const currentCompanyId = localStorage.getItem('admin_company_id') || companyId;
+                                                            if (!currentCompanyId) throw new Error('Please log in again');
+                                                            await updateSubscriptionTier(id, currentCompanyId);
+                                                            setSuccessMessage(`Plan updated to ${tier.name}!`);
+                                                            setShowSuccessModal(true);
+                                                            // Reload overview to reflect new plan
+                                                            setTimeout(() => {
+                                                                setShowSuccessModal(false);
+                                                                loadOverview();
+                                                            }, 2000);
+                                                        } catch (err: any) {
+                                                            toast.error('Failed to update plan: ' + (err?.message || err));
+                                                        } finally {
+                                                            setTierUpdating(false);
+                                                        }
+                                                    }}
+                                                    features={[
+                                                        {
+                                                            text: tier.max_documents === -1 ? 'Unlimited Documents' : `${tier.max_documents} Documents`,
+                                                            enabled: true
+                                                        },
+                                                        {
+                                                            text: tier.max_queries_per_month === -1 ? 'Unlimited Queries' : `${tier.max_queries_per_month.toLocaleString()} Queries/month`,
+                                                            enabled: true
+                                                        },
+                                                        { text: 'Advanced Analytics', enabled: tier.analytics_enabled },
+                                                        { text: 'Custom Branding', enabled: tier.custom_branding },
+                                                        { text: 'Priority Support', enabled: tierId === 'enterprise' },
+                                                    ]}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div style={{ textAlign: 'center', padding: 80, color: '#64748b' }}>
+                                    Could not load subscription tiers. Please refresh...
+                                </div>
+                            )}
+
+                            {/* Success Modal */}
+                            {showSuccessModal && (
+                                <div style={{
+                                    position: 'fixed',
+                                    inset: 0,
+                                    background: 'rgba(0,0,0,0.7)',
+                                    backdropFilter: 'blur(4px)',
+                                    zIndex: 200,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <div style={{
+                                        background: '#1a1a1a',
+                                        border: '1px solid rgba(99, 102, 241, 0.3)',
+                                        borderRadius: 20,
+                                        padding: '48px 40px',
+                                        textAlign: 'center',
+                                        maxWidth: 400,
+                                        boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+                                    }}>
+                                        <div style={{
+                                            width: 64,
+                                            height: 64,
+                                            borderRadius: '50%',
+                                            background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            margin: '0 auto 20px',
+                                            boxShadow: '0 8px 30px rgba(99, 102, 241, 0.4)'
+                                        }}>
+                                            <Check size={32} color="#fff" />
+                                        </div>
+                                        <h3 style={{ color: 'white', fontSize: '1.3rem', fontWeight: 700, marginBottom: 8 }}>
+                                            {successMessage}
+                                        </h3>
+                                        <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                                            Your workspace is being reconfigured...
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )
+                }
+            </main >
 
             {/* New Key Modal */}
             {
@@ -1249,7 +1756,7 @@ export function AdminPanel() {
                                     padding: 4,
                                     alignItems: 'center'
                                 }}>
-                                    <code style={{ flex: 1, padding: 12, color: '#60a5fa', fontFamily: 'monospace', fontSize: '1rem', overflowX: 'auto' }}>
+                                    <code style={{ flex: 1, padding: 12, color: 'rgba(255,255,255,0.75)', fontFamily: 'monospace', fontSize: '1rem', overflowX: 'auto' }}>
                                         {generatedKey.key}
                                     </code>
                                     <button
@@ -1276,7 +1783,7 @@ export function AdminPanel() {
                                 style={{
                                     width: '100%',
                                     padding: 14,
-                                    background: '#3b82f6',
+                                    background: '#6366f1',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: 12,
@@ -1290,6 +1797,6 @@ export function AdminPanel() {
                     </div>
                 )
             }
-        </div >
+        </>
     );
 }
