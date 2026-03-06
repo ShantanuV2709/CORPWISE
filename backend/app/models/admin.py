@@ -8,9 +8,10 @@ class AdminModel:
     """Model for Organization Admins (stored in 'admins' collection)."""
     
     @staticmethod
-    async def create(username, password, company_id, subscription_tier="starter", google_id=None):
+    async def create(username, password, company_id, email, subscription_tier="starter", google_id=None):
         # Enforce lowercase
         company_id = company_id.lower()
+        email = email.lower()
         
         hashed_password = None
         if password:
@@ -32,6 +33,7 @@ class AdminModel:
             "username": username,
             "password": hashed_password,
             "company_id": company_id,
+            "email": email,
             "is_super_admin": False, # Default to False
             "subscription_tier": subscription_tier,
             "subscription_status": "active",

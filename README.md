@@ -47,7 +47,8 @@ Ask questions, get answers instantly—just like asking a colleague.
 - **Fluid Animations:** Smooth transitions, intense "Vercel-style" hover lift & glow effects on minimal glassmorphism buttons, and refined message bubbles
 - **Responsive Layout:** Fully optimized for both desktop dashboards and mobile devices
 - **Onboarding Hub:** Dedicated "Quick Start" and "Documentation" views to guide new users through widget integration and API usage
-- **Smart Tier Selection:** An interactive wizard ("Help me choose") recommends the best plan based on document volume, team size, and complexity.
+- **Smart Tier Selection:** An interactive wizard ("Help me choose") recommends the best plan based on document volume, team size, and complexity
+- **Unified Auth Drawer:** A sleek, sliding side-sheet (`AuthSheet`) that handles both user login and new organization registration seamlessly
 
 ### Subscription Management
 - **Tiered Access:** Built-in support for multiple subscription tiers (Starter, Professional, Enterprise) with **tier-specific vector dimensions** (384d, 768d, 1024d) for optimized performance.

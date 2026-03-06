@@ -17,12 +17,17 @@ async def keyword_search(query: str, company_id: str = None, limit: int = 5):
     print(f"🔍 KEYWORD SEARCH | Company: '{company_id}' | Target: '{target_company}' | Query: {query}")
     print(f"🔍 MONGODB FILTER: {filters}")
 
-    results = await docs.find(
-        filters,
-        {"score": {"$meta": "textScore"}, "text": 1, "source": 1}
-    ).sort(
-        [("score", {"$meta": "textScore"})]
-    ).limit(limit).to_list(length=limit)
+    try:
+        from pymongo.errors import OperationFailure
+        results = await docs.find(
+            filters,
+            {"score": {"$meta": "textScore"}, "text": 1, "source": 1}
+        ).sort(
+            [("score", {"$meta": "textScore"})]
+        ).limit(limit).to_list(length=limit)
+    except OperationFailure as e:
+        print(f"⚠️ MONGODB KEYWORD SEARCH ERROR: {e}. Skipping keyword search.")
+        return []
 
     chunks = []
 

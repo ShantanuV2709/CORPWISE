@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, Key, MessageSquare, CreditCard, LogOut, Menu, X, Bell, Search } from 'lucide-react';
-import { AdminAuth } from '../components/AdminAuth';
+import { AdminAuth } from '../features/auth/components/AdminAuth';
 import './DashboardLayout.css';
 
 // Routes that map to search queries

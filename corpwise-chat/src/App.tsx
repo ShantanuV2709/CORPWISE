@@ -1,20 +1,20 @@
 import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from 'react-hot-toast';
-import ChatWidget from "./components/ChatWidget";
+import ChatWidget from "./features/chat/components/ChatWidget";
 import { MainLayout } from "./components/MainLayout";
 import SystemProcessing from "./components/SystemProcessing";
 
 // Lazy Load Pages for Performance Optimization
-const LandingPage = lazy(() => import("./pages/LandingPage").then(module => ({ default: module.LandingPage })));
+const LandingPage = lazy(() => import("./features/landing/pages/LandingPage").then(module => ({ default: module.LandingPage })));
 const DashboardLayout = lazy(() => import("./layouts/DashboardLayout").then(module => ({ default: module.DashboardLayout })));
-const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage").then(module => ({ default: module.AdminLoginPage })));
+const AdminLoginPage = lazy(() => import("./features/admin/pages/AdminLoginPage").then(module => ({ default: module.AdminLoginPage })));
 // Handle default vs named exports carefully. AdminPanel is likely a named export based on previous file reads.
-const AdminPanel = lazy(() => import("./pages/AdminPanel").then(module => ({ default: module.AdminPanel })));
-const OnboardingPage = lazy(() => import("./pages/OnboardingPage").then(module => ({ default: module.OnboardingPage })));
-const ChatWindow = lazy(() => import("./components/ChatWindow"));
-const TierSelection = lazy(() => import("./pages/TierSelection").then(module => ({ default: module.TierSelection })));
-const SuperAdminDashboard = lazy(() => import("./components/SuperAdminDashboard").then(module => ({ default: module.SuperAdminDashboard })));
+const AdminPanel = lazy(() => import("./features/admin/pages/AdminPanel").then(module => ({ default: module.AdminPanel })));
+const OnboardingPage = lazy(() => import("./features/onboarding/pages/OnboardingPage").then(module => ({ default: module.OnboardingPage })));
+const ChatWindow = lazy(() => import("./features/chat/components/ChatWindow"));
+const TierSelection = lazy(() => import("./features/onboarding/pages/TierSelection").then(module => ({ default: module.TierSelection })));
+const SuperAdminDashboard = lazy(() => import("./features/admin/components/SuperAdminDashboard").then(module => ({ default: module.SuperAdminDashboard })));
 
 // Loading Fallback Component
 const PageLoader = () => (
@@ -104,3 +104,4 @@ export default function App() {
     </BrowserRouter>
   );
 }
+

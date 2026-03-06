@@ -1,4 +1,4 @@
-﻿.craft-btn {
+.custom-get-started-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -23,7 +23,7 @@
 }
 
 /* On hover → white bg, dark text, visible border */
-.craft-btn:hover {
+.custom-get-started-btn:hover {
     background: #ffffff;
     color: #3730a3;
     border-color: rgba(79, 70, 229, 0.30);
@@ -31,18 +31,18 @@
 }
 
 /* ── Label ── */
-.craft-btn-label {
+.custom-get-started-btn .btn-label {
     position: relative;
     z-index: 2;
     transition: color 0.5s ease;
 }
 
-.craft-btn:hover .craft-btn-label {
+.custom-get-started-btn:hover .btn-label {
     color: #3730a3;
 }
 
 /* ── Icon wrapper (holds bg circle + foreground icon) ── */
-.craft-btn-icon-wrap {
+.custom-get-started-btn .btn-icon-wrapper {
     position: relative;
     width: 20px;
     height: 20px;
@@ -51,7 +51,7 @@
 }
 
 /* Expanding background circle */
-.craft-btn-icon-bg {
+.custom-get-started-btn .btn-icon-bg {
     position: absolute;
     inset: 0;
     width: 20px;
@@ -63,12 +63,12 @@
     transform: scale(1);
 }
 
-.craft-btn:hover .craft-btn-icon-bg {
+.custom-get-started-btn:hover .btn-icon-bg {
     transform: scale(15);
 }
 
 /* Foreground icon circle */
-.craft-btn-icon-fg {
+.custom-get-started-btn .btn-icon-fg {
     position: relative;
     z-index: 2;
     width: 20px;
@@ -82,19 +82,19 @@
     transition: background 0.5s ease, color 0.5s ease;
 }
 
-.craft-btn:hover .craft-btn-icon-fg {
+.custom-get-started-btn:hover .btn-icon-fg {
     background: #e2e8f0;
     color: #3730a3;
 }
 
 /* Arrow rotation on hover */
-.craft-btn-icon-fg svg {
+.custom-get-started-btn .arrow-icon {
     width: 12px;
     height: 12px;
     stroke-width: 2.5;
     transition: transform 0.5s ease;
 }
 
-.craft-btn:hover .craft-btn-icon-fg svg {
+.custom-get-started-btn:hover .arrow-icon {
     transform: rotate(45deg);
 }

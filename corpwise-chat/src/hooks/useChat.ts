@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { sendQuery, getHistory } from "../api/chat";
+import { sendQuery, getHistory } from "../features/chat/api/chat";
 import { Message } from "../types/chat";
 
 export interface ConversationSummary {

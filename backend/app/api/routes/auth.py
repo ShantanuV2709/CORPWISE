@@ -182,6 +182,7 @@ class AdminSignupRequest(BaseModel):
     username: str = Field(..., min_length=3)
     password: str = Field(..., min_length=6)
     company_id: str = Field(..., min_length=2)
+    email: str = Field(..., description="A valid Gmail address for billing and notifications")
     subscription_tier: str = Field(default="starter")  # Default to starter; users choose in billing tab
 
 class AdminLoginRequest(BaseModel):
@@ -203,9 +204,13 @@ async def admin_signup(payload: AdminSignupRequest):
         raise HTTPException(status_code=400, detail="Admin username already exists")
 
     # Debug Payload
-    print(f"DEBUG ADMIN SIGNUP: user={payload.username}, pwd_len={len(payload.password)}, company={payload.company_id}, tier={payload.subscription_tier}")
+    print(f"DEBUG ADMIN SIGNUP: user={payload.username}, pwd_len={len(payload.password)}, company={payload.company_id}, email={payload.email}, tier={payload.subscription_tier}")
     if len(payload.password) > 70:
         print(f"DEBUG: Password excessively long: {payload.password[:20]}...")
+
+    # Validate Email is a Gmail
+    if not payload.email.lower().endswith("@gmail.com"):
+        raise HTTPException(status_code=400, detail="A valid Gmail address (@gmail.com) is required for registration.")
 
     # Validate subscription tier
     from app.models.subscription import SUBSCRIPTION_TIERS
@@ -218,6 +223,7 @@ async def admin_signup(payload: AdminSignupRequest):
             username=payload.username,
             password=payload.password,
             company_id=payload.company_id,
+            email=payload.email,
             subscription_tier=payload.subscription_tier
         )
     except ValueError as e:

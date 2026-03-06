@@ -38,7 +38,7 @@ REFUSAL_MESSAGE = "I do not have sufficient internal information to answer this 
 # =====================================================
 # Semantic Retrieval (Pinecone ONLY)
 # =====================================================
-async def semantic_search(query: str, company_id: str, top_k: int = 5):
+async def semantic_search(query: str, company_id: str, top_k: int = 15):
     index = get_index()
     query_vector = await embed_text(query)
 
@@ -59,8 +59,8 @@ async def semantic_search(query: str, company_id: str, top_k: int = 5):
     print(f"🌲 PINECONE RESULTS: {len(results.get('matches', []))} matches found.")
 
     chunks = []
-    MIN_SEMANTIC_SCORE = 0.35
-    MIN_UPLOADED_DOC_SCORE = 0.30  # Lower threshold for uploaded docs
+    MIN_SEMANTIC_SCORE = 0.25
+    MIN_UPLOADED_DOC_SCORE = 0.20  # Lower threshold for uploaded docs
 
     for match in results.get("matches", []):
         meta = match.get("metadata", {})
@@ -113,7 +113,7 @@ def diversify_chunks(chunks, max_per_source=1, max_total=6):
 # =====================================================
 # Hybrid Retrieval
 # =====================================================
-async def retrieve_context(query: str, company_id: str, top_k: int = 8):  # Added company_id
+async def retrieve_context(query: str, company_id: str, top_k: int = 15):  # Added company_id
     CE_SKIP_TOP_NORM = 0.85
     CE_SKIP_GAP = 0.15
 
@@ -172,9 +172,8 @@ async def retrieve_context(query: str, company_id: str, top_k: int = 8):  # Adde
             top_chunks = ranked[:3]
             ce_used = False
         else:
-            # ✅ ROBUST FILTER: Only keep positive matches
-            # MS-MARCO CE scores < 0 usually mean "not relevant"
-            filtered_reranked = [c for c in reranked if c.get("ce_score", 0) >= 0.3]  
+            # MS-MARCO CE scores < 0 usually mean "not relevant", we lower threshold to 0.1 to avoid losing good semantic matches
+            filtered_reranked = [c for c in reranked if c.get("ce_score", 0) >= 0.1]  
             
             # Fallback: if filtering removed everything (rare if top score > MIN), 
             # but we know top score was good, keep just the top one.
@@ -235,10 +234,10 @@ def build_prompt(messages: list[dict], context: str, company_id: str = None) -> 
         "SYSTEM: You will receive context chunks below. Your job is to:",
         "SYSTEM: 1. Read the user's question carefully",
         "SYSTEM: 2. Scan ALL context chunks for information that answers the question",
-        "SYSTEM: 3. Synthesize the answer from the provided context",
-        "SYSTEM: 4. If the context is relevant but partial, do your best to answer based ONLY on the context",
+        "SYSTEM: 3. If the context answers the question, use ONLY the context.",
+        "SYSTEM: 4. If the context does NOT fully answer the question, or there is no context, provide a helpful answer based on your general AI knowledge.",
         "",
-        "SYSTEM: If the context doesn't contain the answer, say: 'I don't have that information in my knowledge base.'",
+        "SYSTEM: IMPORTANT: If you use general AI knowledge, you must clearly start your answer with: 'Based on general knowledge...'",
         "SYSTEM: Keep responses concise and professional.",
     ]
 
