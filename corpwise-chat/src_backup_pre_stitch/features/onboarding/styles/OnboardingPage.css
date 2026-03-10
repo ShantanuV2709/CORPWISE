@@ -1,0 +1,594 @@
+/* ─── OnboardingPage — Stitch-inspired Premium Pricing ─── */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+    --ob-bg: #09090b;
+    --ob-emerald: #10b981;
+    --ob-indigo: #6366f1;
+    --ob-card-fill: rgba(255, 255, 255, 0.02);
+    --ob-gradient-border: linear-gradient(to bottom right, rgba(255, 255, 255, 0.1), transparent);
+}
+
+/* ─── Page Shell ─── */
+.ob-page {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--ob-bg);
+    color: #e2e8f0;
+    width: 100%;
+    height: 100vh;
+    max-height: 776px;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.ob-page ::selection {
+    background: rgba(99, 102, 241, 0.3);
+}
+
+.ob-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 1536px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 48px;
+    box-sizing: border-box;
+}
+
+/* ─── Heading Font ─── */
+.ob-heading {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* ─── Nav ─── */
+.ob-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 40px;
+    flex-shrink: 0;
+}
+
+.ob-nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ob-nav-brand svg {
+    width: 24px;
+    height: 24px;
+    color: #fff;
+}
+
+.ob-nav-brand h2 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    background: linear-gradient(to bottom, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+}
+
+.ob-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.ob-help-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.ob-help-btn:hover {
+    background: rgba(245, 158, 11, 0.2);
+}
+
+.ob-close-btn {
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.ob-close-btn:hover {
+    color: #fff;
+}
+
+/* ─── Header ─── */
+.ob-header {
+    margin-bottom: 40px;
+    width: 100%;
+    max-width: 72rem;
+    margin-left: auto;
+    margin-right: auto;
+    flex-shrink: 0;
+}
+
+.ob-header h1 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    color: #fff;
+    margin: 0 0 8px 0;
+}
+
+.ob-header-sub {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ob-header-sub p {
+    color: #94a3b8;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.ob-header-sub .ob-divider {
+    color: #475569;
+}
+
+.ob-header-sub a {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #818cf8;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.ob-header-sub a:hover {
+    color: #a5b4fc;
+}
+
+/* ─── Main Cards Grid ─── */
+.ob-main {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 0;
+}
+
+.ob-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    width: 100%;
+    max-width: 72rem;
+    margin: 0 auto;
+    align-items: stretch;
+    box-sizing: border-box;
+}
+
+.ob-grid>div {
+    min-width: 0;
+}
+
+/* ─── Premium Card ─── */
+.ob-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--ob-card-fill);
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    padding: 28px 32px;
+    transition: background 0.2s;
+}
+
+/* Gradient border via mask */
+.ob-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: var(--ob-gradient-border);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.ob-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* Professional card highlight */
+.ob-card.ob-card--pro {
+    box-shadow: 0 0 80px -20px rgba(79, 70, 229, 0.15);
+    border-top: 2px solid var(--ob-indigo);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* ─── Card Header ─── */
+.ob-card-header {
+    margin-bottom: 24px;
+}
+
+.ob-card--pro .ob-card-header {
+    margin-bottom: 20px;
+}
+
+.ob-card-tier-label {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 20px;
+}
+
+.ob-card--pro .ob-card-tier-label {
+    color: #818cf8;
+    margin-bottom: 0;
+}
+
+.ob-card-pro-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.ob-badge-popular {
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 8px;
+    font-weight: 700;
+    color: #cbd5e1;
+    text-transform: uppercase;
+    letter-spacing: -0.05em;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.ob-card-price {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.ob-card-price-value {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.ob-card-price-period {
+    font-size: 10px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* ─── Card CTA Button ─── */
+.ob-card-btn {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-bottom: 24px;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+.ob-card-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.ob-card-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Primary (Professional) button */
+.ob-card-btn--primary {
+    background: #fff;
+    border: none;
+    color: #000;
+    font-weight: 800;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+.ob-card-btn--primary:hover {
+    background: #e2e8f0;
+}
+
+/* ─── Feature List ─── */
+.ob-features {
+    flex: 1;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 13px;
+}
+
+.ob-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    color: #94a3b8;
+}
+
+.ob-card--pro .ob-feature-item {
+    color: #e2e8f0;
+}
+
+.ob-feature-item:last-child {
+    border-bottom: none;
+}
+
+.ob-feature-check {
+    color: var(--ob-emerald);
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+.ob-feature-cross {
+    color: #334155;
+    font-size: 18px;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+/* ─── Footer ─── */
+.ob-footer {
+    margin-top: auto;
+    padding: 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    flex-shrink: 0;
+}
+
+.ob-footer p {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 9px;
+    color: #475569;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    margin: 0;
+}
+
+.ob-footer-links {
+    display: flex;
+    gap: 32px;
+}
+
+.ob-footer-links a {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 9px;
+    color: #475569;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.ob-footer-links a:hover {
+    color: #fff;
+}
+
+/* ─── Confirmation Modal ─── */
+.ob-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.ob-modal {
+    background: #18181b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.ob-modal h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #fff;
+}
+
+.ob-modal p {
+    color: #a1a1aa;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.ob-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.ob-modal-cancel {
+    padding: 10px 24px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e4e4e7;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.ob-modal-cancel:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.ob-modal-confirm {
+    padding: 10px 24px;
+    background: #fff;
+    border: none;
+    color: #000;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ob-modal-confirm:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* ─── Wizard Modal ─── */
+.ob-wizard-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.ob-wizard-box {
+    background: #09090b;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    border-radius: 24px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(234, 179, 8, 0.1);
+    padding: 32px;
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.ob-wizard-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s ease;
+}
+
+.ob-wizard-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+/* ─── Recommended Badge ─── */
+.ob-recommended-badge {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #34d399;
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    max-width: 72rem;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ─── Loading Spinner ─── */
+.ob-loading {
+    padding: 60px;
+    color: #64748b;
+    text-align: center;
+}
+
+/* ─── Loading Overlay on Card ─── */
+.ob-card-loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    backdrop-filter: blur(2px);
+}
+
+/* ─── Recommended glow on card ─── */
+.ob-card.ob-card--recommended {
+    box-shadow: 0 0 60px -20px rgba(16, 185, 129, 0.2);
+    border-top: 2px solid var(--ob-emerald);
+}

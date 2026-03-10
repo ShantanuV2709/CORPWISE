@@ -112,3 +112,51 @@ export async function deleteCompany(companyId: string, superToken: string) {
 
     return res.json();
 }
+
+export async function getCompanyUsers(companyId: string, superToken: string) {
+    const res = await fetch(`${API_BASE}/super/company/${companyId}/users`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${superToken}`
+        },
+    });
+    if (!res.ok) throw new Error("Failed to fetch company users");
+    return res.json();
+}
+
+export async function getCompanyDocuments(companyId: string, superToken: string) {
+    const res = await fetch(`${API_BASE}/super/company/${companyId}/documents`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${superToken}`
+        },
+    });
+    if (!res.ok) throw new Error("Failed to fetch company documents");
+    return res.json();
+}
+
+export async function getCompanyApiKeys(companyId: string, superToken: string) {
+    const res = await fetch(`${API_BASE}/super/company/${companyId}/api-keys`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${superToken}`
+        },
+    });
+    if (!res.ok) throw new Error("Failed to fetch company API keys");
+    return res.json();
+}
+
+export async function getCompanyMetrics(companyId: string, superToken: string, days: number = 30) {
+    const res = await fetch(`${API_BASE}/super/company/${companyId}/metrics?days=${days}`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${superToken}`
+        },
+    });
+    if (!res.ok) throw new Error("Failed to fetch company metrics");
+    return res.json();
+}

@@ -104,9 +104,22 @@ async def google_login(payload: GoogleLoginRequest):
             # Admin Flow
             from app.models.admin import AdminModel
             from app.core.security import create_access_token
+            from app.db.mongodb import db
             
             admin = await AdminModel.get_by_google_id(google_id)
             is_new_user = False
+            
+            # If not found by google_id, try finding by email
+            if not admin:
+                admin = await db.admins.find_one({"email": email.lower()})
+                if admin:
+                    # Account exists with this email, let's link the google_id
+                    await db.admins.update_one(
+                        {"_id": admin["_id"]}, 
+                        {"$set": {"google_id": google_id}}
+                    )
+            
+            # If still not found, we create a new admin registration
             if not admin:
                 # Need company_id to create
                 if not payload.company_id:
@@ -116,6 +129,7 @@ async def google_login(payload: GoogleLoginRequest):
                     username=username,
                     password=None, # No password for Google auth
                     company_id=payload.company_id,
+                    email=email.lower(),
                     google_id=google_id
                 )
                 is_new_user = True

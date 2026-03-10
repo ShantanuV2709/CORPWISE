@@ -1,0 +1,68 @@
+.custom-upload-btn-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    height: 48px;
+    padding: 0 20px 0 8px;
+    border-radius: 9999px;
+    background-color: transparent;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.custom-upload-btn-container:hover:not(.disabled) {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.custom-upload-btn-container.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.custom-upload-btn-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: white;
+    color: #050507;
+    /* Dark background to act as primary text */
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.custom-upload-btn-container:hover:not(.disabled) .custom-upload-btn-icon-wrapper {
+    transform: scale(1.05);
+}
+
+/* Pulse animation for uploading state */
+@keyframes custom-pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(0.9);
+        opacity: 0.7;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.animate-pulse {
+    animation: custom-pulse 1.5s infinite ease-in-out;
+}

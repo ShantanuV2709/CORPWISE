@@ -1,5 +1,11 @@
+import sys
 import asyncio
 from datetime import datetime
+from pathlib import Path
+
+# Add backend root to path so 'app' imports work
+backend_root = Path(__file__).parent.parent
+sys.path.append(str(backend_root))
 
 from app.services.chat_orchestrator import process_chat
 from app.db.mongodb import db
@@ -68,4 +74,6 @@ async def run_evaluation():
 
 
 if __name__ == "__main__":
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(run_evaluation())

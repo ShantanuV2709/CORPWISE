@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Shield, Zap, Database, ArrowRight, Brain,
@@ -12,6 +12,9 @@ import StickyStack from '../../../components/StickyStack';
 import { AuthSheet } from '../../auth/components/AuthSheet';
 import { ArrowUpRightIcon } from 'lucide-react';
 import { CraftButton, CraftButtonLabel, CraftButtonIcon } from '../../../components/ui/craft-button';
+import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion';
+import { useRef } from 'react';
+import NeuralBackground from '../components/NeuralBackground';
 import './LandingPage.css';
 
 export function LandingPage() {
@@ -39,6 +42,96 @@ export function LandingPage() {
         };
         loadTiers();
     }, []);
+
+    // --- Frame Motion Scroll Setup ---
+    const rootScrollRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [isLocked, setIsLocked] = useState(false);
+
+    const { scrollYProgress } = useScroll({
+        target: containerRef,
+        container: rootScrollRef,
+        offset: ["start start", "end end"]
+    });
+
+    useEffect(() => {
+        const unsubscribe = scrollYProgress.on("change", (latest) => {
+            // Once we reach the very end, lock the animation logic out entirely
+            if (latest > 0.99 && !isLocked) {
+                setIsLocked(true);
+                if (rootScrollRef.current) {
+                    rootScrollRef.current.scrollTop = 0;
+                }
+            }
+        });
+        return () => unsubscribe();
+    }, [scrollYProgress, isLocked]);
+
+    // Phase 1: Ingestion
+    // Use scrollYProgress directly to allow icons to "fly back" on scroll up
+    const strictProgress = scrollYProgress;
+
+    // Randomize icon entrance delays and spawn positions on every visit
+    const iconData = useMemo(() => {
+        const baseDelays = [0.8, 1.1, 1.4, 1.7].sort(() => Math.random() - 0.5);
+
+        // Spawn icons at random edges (Left, Right, Top, Bottom)
+        const spawns = [
+            { x: "-40vw", y: "-40vh" }, // Top Left
+            { x: "40vw", y: "-40vh" },  // Top Right
+            { x: "-40vw", y: "40vh" },   // Bottom Left
+            { x: "40vw", y: "40vh" }    // Bottom Right
+        ];
+
+        // Jitter the spawns slightly for true randomness
+        const randomizedSpawns = spawns.map(s => ({
+            x: `${parseInt(s.x) + (Math.random() * 20 - 10)}vw`,
+            y: `${parseInt(s.y) + (Math.random() * 20 - 10)}vh`
+        })).sort(() => Math.random() - 0.5);
+
+        return baseDelays.map((delay, i) => ({
+            delay,
+            startX: randomizedSpawns[i].x,
+            startY: randomizedSpawns[i].y
+        }));
+    }, []);
+
+    const f1X = useTransform(strictProgress, [0.0, 0.70], [iconData[0].startX, "0vw"]);
+    const f1Y = useTransform(strictProgress, [0.0, 0.70], [iconData[0].startY, "0vh"]);
+    const f1OpacityIngest = useTransform(strictProgress, [0.0, 0.65, 0.70], [1, 1, 0]);
+
+    const f2X = useTransform(strictProgress, [0.0, 0.70], [iconData[1].startX, "0vw"]);
+    const f2Y = useTransform(strictProgress, [0.0, 0.70], [iconData[1].startY, "0vh"]);
+    const f2OpacityIngest = useTransform(strictProgress, [0.0, 0.65, 0.70], [1, 1, 0]);
+
+    const f3X = useTransform(strictProgress, [0.0, 0.70], [iconData[2].startX, "0vw"]);
+    const f3Y = useTransform(strictProgress, [0.0, 0.70], [iconData[2].startY, "0vh"]);
+    const f3OpacityIngest = useTransform(strictProgress, [0.0, 0.65, 0.70], [1, 1, 0]);
+
+    const f4X = useTransform(strictProgress, [0.0, 0.70], [iconData[3].startX, "0vw"]);
+    const f4Y = useTransform(strictProgress, [0.0, 0.70], [iconData[3].startY, "0vh"]);
+    const f4OpacityIngest = useTransform(strictProgress, [0.0, 0.65, 0.70], [1, 1, 0]);
+
+    // Logo Blinking as files are ingested (brief scale ups)
+    const logoScale = useTransform(strictProgress,
+        [0, 0.60, 0.65, 0.70, 0.75],
+        [1, 1, 1.15, 1, 1]
+    );
+
+    // Phase 2: 0.70 to 0.90 (Logo jumps to Taskbar Navbar scale & position)
+    const centerLogoX = useTransform(strictProgress, [0.70, 0.90], ["0vw", "-42vw"]);
+    const centerLogoY = useTransform(strictProgress, [0.70, 0.90], ["0vh", "-45vh"]);
+    const centerLogoOverallScale = useTransform(strictProgress, [0.70, 0.90], [1, 0.25]);
+
+    // Fast Handoff to actual Navbar completely at 0.90
+    const centerLogoOpacity = useTransform(strictProgress, [0.0, 0.90, 0.93], [1, 1, 0]);
+
+    // Phase 3: 0.80 to 1.0 (Rest of Hero Content fades in below)
+    const heroRestOpacity = useTransform(strictProgress, [0.0, 0.80, 0.95], [0, 0, 1]);
+    const heroRestY = useTransform(strictProgress, [0.0, 0.80, 0.95], [40, 40, 0]);
+
+    // Navbar fades in slightly later
+    const navOpacity = useTransform(strictProgress, [0.0, 0.85, 0.98], [0, 0, 1]);
 
     const features = [
         {
@@ -111,14 +204,14 @@ export function LandingPage() {
 
     return (
         <>
-            <div className="landing-container">
+            <div className="landing-container" ref={rootScrollRef}>
                 {/* Background orbs */}
                 <div className="lp-orb lp-orb-blue" />
                 <div className="lp-orb lp-orb-purple" />
                 <div className="lp-orb lp-orb-green" />
 
-                {/* Header */}
-                <header className="landing-header">
+                {/* Header - Opacity controlled by scroll OR locked */}
+                <motion.header className="landing-header" style={{ opacity: isLocked ? 1 : navOpacity, pointerEvents: "auto" }}>
                     <div className="landing-logo">
                         <span className="brand-title">CORPWISE</span>
                     </div>
@@ -138,36 +231,95 @@ export function LandingPage() {
                             </CraftButtonIcon>
                         </CraftButton>
                     </div>
-                </header>
+                </motion.header>
 
-                {/* Hero */}
-                <main className="landing-main">
-                    <section className="hero-section">
-                        <div className="hero-badge">
-                            <span className="pulsing-dot" />
-                            <Cpu size={13} style={{ marginRight: 4 }} />
-                            Now with 1024-dim Enterprise Embeddings
+                {/* Conditional Rendering: Only show the animation sequence if not locked */}
+                {!isLocked ? (
+                    <div ref={containerRef} className="hero-scroll-track" style={{ height: "400vh", position: "relative" }}>
+                        {/* Sticky Container holds the hero view while scrolling */}
+                        <div className="hero-sticky-container" style={{ position: "sticky", top: 0, height: "100vh", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <motion.section className="hero-section" style={{ position: "relative", zIndex: 10, width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                {/* Animated Center Logo */}
+                                <motion.div style={{ position: "absolute", display: "flex", justifyContent: "center", alignItems: "center", opacity: centerLogoOpacity, x: centerLogoX, y: centerLogoY, scale: centerLogoOverallScale, zIndex: 100 }}>
+                                    {/* Document Ingestion Icons (Random Spawns) */}
+                                    <motion.img
+                                        src="/pdf-icon.png"
+                                        alt="PDF"
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: iconData[0].delay, duration: 0.5 }}
+                                        style={{ x: f1X, y: f1Y, opacity: f1OpacityIngest, rotate: -6, width: 110, height: 110, position: 'absolute', objectFit: 'contain' }}
+                                    />
+                                    <motion.img
+                                        src="/docs-icon.png"
+                                        alt="Docs"
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: iconData[1].delay, duration: 0.5 }}
+                                        style={{ x: f2X, y: f2Y, opacity: f2OpacityIngest, rotate: 4, width: 140, height: 140, position: 'absolute', objectFit: 'contain' }}
+                                    />
+                                    <motion.img
+                                        src="/slack-icon.png"
+                                        alt="Slack"
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: iconData[2].delay, duration: 0.5 }}
+                                        style={{ x: f3X, y: f3Y, opacity: f3OpacityIngest, rotate: -4, width: 110, height: 110, position: 'absolute', objectFit: 'contain' }}
+                                    />
+                                    <motion.img
+                                        src="/txt-icon.png"
+                                        alt="TXT"
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: iconData[3].delay, duration: 0.5 }}
+                                        style={{ x: f4X, y: f4Y, opacity: f4OpacityIngest, rotate: 5, width: 110, height: 110, position: 'absolute', objectFit: 'contain' }}
+                                    />
+
+                                    <motion.div style={{ display: "flex", alignItems: "center", justifyContent: "center", userSelect: "none", zIndex: 10 }}>
+                                        <motion.h1
+                                            className="hero-title"
+                                            initial={{ filter: "blur(15px)", opacity: 0 }}
+                                            animate={{ filter: "blur(0px)", opacity: 1 }}
+                                            transition={{ duration: 0.6, ease: "easeOut" }}
+                                            style={{ scale: logoScale, margin: 0 }}
+                                        >
+                                            <span className="brand-title" style={{ fontSize: "6rem", fontWeight: 900, background: "linear-gradient(135deg, #fff 0%, #94a3b8 100%)", WebkitBackgroundClip: "text", color: "transparent", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                                                CORPWISE
+                                            </span>
+                                        </motion.h1>
+                                    </motion.div>
+                                </motion.div>
+
+                                {/* Rest of Hero Content (Hidden initially) */}
+                                <motion.div style={{ opacity: heroRestOpacity, y: heroRestY, textAlign: "center", marginTop: "10rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                                    <h2 className="hero-subtitle">
+                                        Your company's brain.<br />
+                                        <span className="subtitle-gradient">Fully encrypted. Always private.</span>
+                                    </h2>
+                                </motion.div>
+                            </motion.section>
                         </div>
-
-                        <h1 className="hero-title">
-                            Your Private<br />
-                            <span className="text-gradient">Enterprise AI Brain</span>
-                        </h1>
-
-                        <p className="hero-subtitle">
-                            Transform company documents into instant, conversational intelligence.
-                            Secure, multi-tenant vector search built for the modern enterprise.
-                        </p>
-
-                        {/* Factual product spec pills — no vanity metrics */}
-                        <div className="trust-badges">
-                            <span className="trust-badge"><Zap size={13} /> 3 Embedding Tiers</span>
-                            <span className="trust-badge"><Shield size={13} /> Tenant-Isolated Storage</span>
-                            <span className="trust-badge"><Database size={13} /> Pinecone Vector DB</span>
-                            <span className="trust-badge"><Code2 size={13} /> REST API + Embeddable Widget</span>
+                    </div>
+                ) : (
+                    /* Final Clean Hero Section (Once Animation is locked) */
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        style={{ height: "100vh", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", position: "relative", overflow: "hidden" }}
+                    >
+                        <NeuralBackground />
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative", zIndex: 2 }}>
+                            <h2 className="hero-subtitle">
+                                Your company's brain.<br />
+                                <span className="subtitle-gradient">Fully encrypted. Always private.</span>
+                            </h2>
                         </div>
-                    </section>
+                    </motion.div>
+                )}
 
+                {/* Main Content flows normally AFTER the 400vh track */}
+                <main className="landing-main" style={{ paddingTop: 40 }}>
                     {/* Features Grid with SpotlightCard */}
                     <section id="features" className="features-section">
                         <div className="section-header">
@@ -375,7 +527,6 @@ export function LandingPage() {
                 }}
             />
         </>
+
     );
 }
-
-

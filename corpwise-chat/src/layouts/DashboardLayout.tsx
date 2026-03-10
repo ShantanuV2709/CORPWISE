@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Key, MessageSquare, CreditCard, LogOut, Menu, X, Bell, Search } from 'lucide-react';
+import { LayoutDashboard, FileText, Key, MessageSquare, CreditCard, LogOut, Menu, X, Bell, Search, Bug } from 'lucide-react';
 import { AdminAuth } from '../features/auth/components/AdminAuth';
 import './DashboardLayout.css';
 
 // Routes that map to search queries
-const SEARCH_ROUTES: { keywords: string[]; path: string; label: string; icon: string }[] = [
-    { keywords: ['doc', 'pdf', 'file', 'upload', 'knowledge'], path: '/admin/documents', label: 'Documents', icon: '📄' },
-    { keywords: ['key', 'api', 'token', 'secret'], path: '/admin/apikeys', label: 'API Keys', icon: '🔑' },
-    { keywords: ['chat', 'log', 'message', 'conversation', 'history'], path: '/admin/logs', label: 'Chat Logs', icon: '💬' },
-    { keywords: ['bill', 'pay', 'invoice', 'plan', 'subscription'], path: '/admin/billing', label: 'Billing', icon: '💳' },
-    { keywords: ['overview', 'stats', 'usage', 'dashboard'], path: '/admin/overview', label: 'Overview', icon: '📊' },
+const SEARCH_ROUTES: { keywords: string[]; path: string; label: string; description: string; icon: React.ReactNode }[] = [
+    { keywords: ['overview', 'stats', 'usage', 'dashboard', 'home'], path: '/admin/overview', label: 'Overview', description: 'Usage stats & analytics', icon: <LayoutDashboard size={16} /> },
+    { keywords: ['doc', 'pdf', 'file', 'upload', 'knowledge', 'ingest'], path: '/admin/documents', label: 'Documents', description: 'Upload & manage files', icon: <FileText size={16} /> },
+    { keywords: ['key', 'api', 'token', 'secret', 'credential'], path: '/admin/apikeys', label: 'API Keys', description: 'Manage API credentials', icon: <Key size={16} /> },
+    { keywords: ['chat', 'log', 'message', 'conversation', 'history'], path: '/admin/logs', label: 'Chat Logs', description: 'Conversation history', icon: <MessageSquare size={16} /> },
+    { keywords: ['search', 'debug', 'test', 'query', 'vector'], path: '/admin/search-debug', label: 'Search Debug', description: 'Test search queries', icon: <Bug size={16} /> },
+    { keywords: ['bill', 'pay', 'invoice', 'plan', 'subscription', 'pricing'], path: '/admin/billing', label: 'Billing', description: 'Plans & payments', icon: <CreditCard size={16} /> },
 ];
 
 function resolveSearchPath(query: string): string {
@@ -18,7 +19,7 @@ function resolveSearchPath(query: string): string {
     for (const route of SEARCH_ROUTES) {
         if (route.keywords.some(kw => q.includes(kw))) return route.path;
     }
-    return '/admin/documents'; // default
+    return '/admin/documents';
 }
 
 export function DashboardLayout() {
@@ -27,8 +28,32 @@ export function DashboardLayout() {
     const [companyId, setCompanyId] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [showSearchHint, setShowSearchHint] = useState(false);
+    const [activeIndex, setActiveIndex] = useState(-1);
     const searchRef = useRef<HTMLInputElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
+
+    // Filtered routes based on search query
+    const filteredRoutes = SEARCH_ROUTES.filter(r =>
+        !searchQuery || r.keywords.some(kw => kw.includes(searchQuery.toLowerCase())) || r.label.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Reset active index when query changes
+    useEffect(() => {
+        setActiveIndex(searchQuery ? 0 : -1);
+    }, [searchQuery]);
+
+    // ⌘K / Ctrl+K global shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                searchRef.current?.focus();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     useEffect(() => {
         const savedId = localStorage.getItem("admin_company_id");
@@ -42,6 +67,39 @@ export function DashboardLayout() {
         localStorage.removeItem("admin_company_id");
         navigate('/');
     };
+
+    const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActiveIndex(prev => Math.min(prev + 1, filteredRoutes.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActiveIndex(prev => Math.max(prev - 1, 0));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIndex >= 0 && activeIndex < filteredRoutes.length) {
+                navigate(filteredRoutes[activeIndex].path);
+            } else if (searchQuery.trim()) {
+                navigate(resolveSearchPath(searchQuery.trim()));
+            }
+            setShowSearchHint(false);
+            setSearchQuery('');
+            setActiveIndex(-1);
+            searchRef.current?.blur();
+        } else if (e.key === 'Escape') {
+            setShowSearchHint(false);
+            setSearchQuery('');
+            setActiveIndex(-1);
+            searchRef.current?.blur();
+        }
+    };
+
+    const navigateToRoute = useCallback((path: string) => {
+        navigate(path);
+        setSearchQuery('');
+        setShowSearchHint(false);
+        setActiveIndex(-1);
+    }, [navigate]);
 
     if (!isAuthenticated) {
         return <AdminAuth onAuthenticated={(id) => {
@@ -111,66 +169,48 @@ export function DashboardLayout() {
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onFocus={() => setShowSearchHint(true)}
-                                onBlur={() => setTimeout(() => setShowSearchHint(false), 150)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && searchQuery.trim()) {
-                                        const path = resolveSearchPath(searchQuery.trim());
-                                        setShowSearchHint(false);
-                                        setSearchQuery('');
-                                        navigate(path);
-                                    }
-                                    if (e.key === 'Escape') {
-                                        setShowSearchHint(false);
-                                        setSearchQuery('');
-                                        searchRef.current?.blur();
-                                    }
-                                }}
+                                onBlur={() => setTimeout(() => { setShowSearchHint(false); setActiveIndex(-1); }, 200)}
+                                onKeyDown={handleSearchKeyDown}
                             />
-                            {/* Dropdown: show when focused */}
+                            {!showSearchHint && !searchQuery && (
+                                <kbd className="search-shortcut">⌘K</kbd>
+                            )}
+                            {/* Dropdown */}
                             {showSearchHint && (
-                                <div style={{
-                                    position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0,
-                                    background: 'rgba(10,10,14,0.97)', border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: 12, overflow: 'hidden', zIndex: 200,
-                                    backdropFilter: 'blur(20px)', boxShadow: '0 16px 40px rgba(0,0,0,0.5)'
-                                }}>
-                                    <div style={{ padding: '8px 12px 4px', fontSize: '0.7rem', color: '#475569', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                                        {searchQuery ? 'Jump to' : 'Navigate to'}
+                                <div ref={dropdownRef} className="search-dropdown">
+                                    <div className="search-dropdown-header">
+                                        {searchQuery ? 'Results' : 'Quick Navigation'}
                                     </div>
-                                    {SEARCH_ROUTES.filter(r =>
-                                        !searchQuery || r.keywords.some(kw => kw.includes(searchQuery.toLowerCase())) || r.label.toLowerCase().includes(searchQuery.toLowerCase())
-                                    ).map((route) => {
-                                        const isBestMatch = searchQuery ? resolveSearchPath(searchQuery) === route.path : false;
-                                        return (
+                                    <div className="search-dropdown-list">
+                                        {filteredRoutes.map((route, idx) => (
                                             <button
                                                 key={route.path}
-                                                onMouseDown={() => {
-                                                    navigate(route.path);
-                                                    setSearchQuery('');
-                                                    setShowSearchHint(false);
-                                                }}
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                                                    padding: '9px 14px', background: isBestMatch ? 'rgba(99,102,241,0.1)' : 'transparent',
-                                                    border: 'none', cursor: 'pointer', transition: 'background 0.15s', textAlign: 'left'
-                                                }}
-                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                                                onMouseLeave={e => e.currentTarget.style.background = isBestMatch ? 'rgba(99,102,241,0.1)' : 'transparent'}
+                                                className={`search-dropdown-item ${idx === activeIndex ? 'active' : ''}`}
+                                                onMouseDown={() => navigateToRoute(route.path)}
+                                                onMouseEnter={() => setActiveIndex(idx)}
                                             >
-                                                <Search size={14} color={isBestMatch ? '#818cf8' : '#475569'} />
-                                                <span style={{ color: isBestMatch ? '#e2e8f0' : '#94a3b8', fontSize: '0.9rem', fontWeight: isBestMatch ? 600 : 400 }}>
-                                                    {route.label}
-                                                </span>
-                                                {isBestMatch && (
-                                                    <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#6366f1', background: 'rgba(99,102,241,0.15)', padding: '2px 8px', borderRadius: 99 }}>
-                                                        Best match
-                                                    </span>
+                                                <div className="search-dropdown-item-icon">
+                                                    {route.icon}
+                                                </div>
+                                                <div className="search-dropdown-item-text">
+                                                    <span className="search-dropdown-item-label">{route.label}</span>
+                                                    <span className="search-dropdown-item-desc">{route.description}</span>
+                                                </div>
+                                                {idx === activeIndex && (
+                                                    <span className="search-dropdown-item-hint">↵</span>
                                                 )}
                                             </button>
-                                        );
-                                    })}
-                                    <div style={{ padding: '6px 12px 8px', fontSize: '0.72rem', color: '#334155', borderTop: '1px solid rgba(255,255,255,0.04)', marginTop: 4 }}>
-                                        Press <kbd style={{ background: 'rgba(255,255,255,0.07)', padding: '1px 5px', borderRadius: 4, fontSize: '0.7rem' }}>Enter</kbd> to jump · <kbd style={{ background: 'rgba(255,255,255,0.07)', padding: '1px 5px', borderRadius: 4, fontSize: '0.7rem' }}>Esc</kbd> to close
+                                        ))}
+                                        {filteredRoutes.length === 0 && (
+                                            <div className="search-dropdown-empty">
+                                                No matching pages found
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="search-dropdown-footer">
+                                        <span><kbd>↑↓</kbd> navigate</span>
+                                        <span><kbd>↵</kbd> open</span>
+                                        <span><kbd>esc</kbd> close</span>
                                     </div>
                                 </div>
                             )}

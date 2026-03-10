@@ -1,0 +1,37 @@
+﻿/* 
+  StickyStack â€” each card pins to the top using position:sticky.
+  The tall container is what creates the "scroll room" for each card to be seen.
+  Cards stack visually as the user scrolls down.
+*/
+
+.sticky-stack-container {
+    position: relative;
+    /* Each item gets 100vh of scroll space, so for 3 items = 300vh total */
+    padding-bottom: 50vh;
+}
+
+.sticky-stack-item {
+    position: sticky;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    margin-bottom: 0;
+
+    /* Card visual style */
+    background: rgba(10, 10, 18, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 28px;
+    padding: 48px 48px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+    transition: box-shadow 0.3s ease;
+}
+
+.sticky-stack-item:hover {
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6);
+}
+
+.sticky-stack-spacer {
+    /* Spacer below the container to ensure natural transition to next section */
+    height: 20vh;
+}

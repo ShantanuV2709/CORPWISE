@@ -1,0 +1,32 @@
+.custom-upgrade-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 13px 20px;
+    border-radius: 12px;
+    background-color: transparent;
+    /* Matching the app theme colors with a cool swooping 3-stop gradient */
+    background-image: linear-gradient(to right, #6366f1, rgba(99, 102, 241, 0.6), #6366f1);
+    background-size: 200% auto;
+    color: white;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+    transition: background-position 0.2s, transform 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+
+.custom-upgrade-btn:hover {
+    background-color: transparent;
+    background-position: 99% center;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+}
+
+.custom-upgrade-btn:focus-visible {
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
+}
