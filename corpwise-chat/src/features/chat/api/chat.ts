@@ -1,6 +1,7 @@
 import { ChatResponse } from "../../../types/chat";
 
 const API_BASE = "http://localhost:8001";
+const IS_DEV = process.env.NODE_ENV !== "production";
 
 export async function sendQuery(
   userId: string,
@@ -13,7 +14,9 @@ export async function sendQuery(
   // Fallback: If companyId is not passed, read from window config
   const targetCompany = companyId || (window as any).CORPWISE_COMPANY_ID || "";
 
-  console.log(`[API] Sending Query. Company: ${targetCompany}, Query: ${query}`);
+  if (IS_DEV) {
+    console.debug(`[API] Sending query for company: ${targetCompany || "<none>"}`);
+  }
 
   if (targetCompany) {
     headers["X-Company-ID"] = targetCompany;
@@ -32,7 +35,7 @@ export async function sendQuery(
   const resolvedApiKey = windowApiKey || storedApiKey;
   if (resolvedApiKey) {
     headers["X-API-Key"] = resolvedApiKey;
-  } else {
+  } else if (IS_DEV) {
     console.warn("[API] No API Key found. Set window.CORPWISE_API_KEY or localStorage.corpwise_api_key.");
   }
 
