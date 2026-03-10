@@ -5,6 +5,8 @@ from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
 import logging
 
+logger = logging.getLogger(__name__)
+
 from app.api.routes.chat import router as chat_router
 from app.api.routes.system import router as system_router
 from app.api.routes.users import router as users_router
@@ -25,9 +27,9 @@ logging.basicConfig(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     collections = await db.list_collection_names()
-    print("✅ MongoDB connected. Collections:", collections)
+    logger.info("MongoDB connected. Collections: %s", collections)
     yield
-    print("🛑 CORPWISE shutting down")
+    logger.info("CORPWISE shutting down")
 
 # =====================================================
 # FastAPI App (CREATE FIRST)
@@ -91,7 +93,16 @@ async def health():
 
 @app.get("/db-check")
 async def db_check():
-    collections = await db.list_collection_names()
+    try:
+        collections = await db.list_collection_names()
+    except Exception as exc:
+        logger.exception("MongoDB check failed: %s", exc)
+        return {
+            "mongo_connected": False,
+            "collections": [],
+            "error": str(exc)
+        }
+
     return {
         "mongo_connected": True,
         "collections": collections
